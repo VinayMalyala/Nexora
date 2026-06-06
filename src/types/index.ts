@@ -30,6 +30,7 @@ export interface ProductTag {
 }
 
 export interface User {
+  id: string;
   name: string;
   username: string;
   profilePictureUrl: string;
@@ -40,6 +41,17 @@ export interface User {
 
 export interface UserAccount extends User {
   password: string;
+}
+
+export interface Expense {
+  id: string;
+  user_id: string;
+  name: string;
+  price: number;
+  date: string;
+  product_id?: string | null;
+  notes?: string;
+  created_at?: string;
 }
 
 export type ViewMode = 'home' | 'recents' | 'page' | 'price-tracker' | 'monthly-expenses' | 'profile';

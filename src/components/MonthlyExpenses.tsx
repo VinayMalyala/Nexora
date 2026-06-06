@@ -1,20 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { PlusCircle, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-import type { Product } from '../types';
-
-interface Expense {
-  id: string;
-  name: string;
-  price: number;
-  date: string; // ISO
-  product_id?: string | null;
-  notes?: string;
-}
+import { supabase } from '../lib/supabase';
+import type { Expense, Product } from '../types';
 
 interface MonthlyExpensesProps {
   products: Product[];
   loading: boolean;
-  username: string;
+  userId: string;
 }
 
 function formatMonthYear(date: Date) {
@@ -25,10 +17,10 @@ function monthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export default function MonthlyExpenses({ products, loading, username }: MonthlyExpensesProps) {
-  const STORAGE_KEY = `nexora_monthly_expenses_v1_${username}`;
-
+export default function MonthlyExpenses({ products, loading, userId }: MonthlyExpensesProps) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [expensesLoading, setExpensesLoading] = useState(true);
+  const [error, setError] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return monthKey(now);
@@ -41,29 +33,42 @@ export default function MonthlyExpenses({ products, loading, username }: Monthly
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setExpenses(JSON.parse(raw));
-      else setExpenses([]);
-    } catch (e) {
-      console.warn('Failed to read expenses', e);
-    }
-  }, [STORAGE_KEY]);
+    let mounted = true;
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
-    } catch (e) {
-      console.warn('Failed to save expenses', e);
-    }
-  }, [STORAGE_KEY, expenses]);
+    const fetchExpenses = async () => {
+      setExpensesLoading(true);
+      const { data, error: fetchError } = await supabase
+        .from('expenses')
+        .select('id, user_id, name, price, date, product_id, notes, created_at')
+        .eq('user_id', userId)
+        .order('date', { ascending: false });
 
-  const addExpense = () => {
+      if (!mounted) return;
+
+      if (fetchError) {
+        setError(fetchError.message);
+        setExpenses([]);
+      } else {
+        setError('');
+        setExpenses((data ?? []) as Expense[]);
+      }
+
+      setExpensesLoading(false);
+    };
+
+    void fetchExpenses();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userId]);
+
+  const addExpense = async () => {
     if (!name && !productId) return;
     if (!price || price <= 0) return;
 
-    const expense: Expense = {
-      id: `${Date.now()}`,
+    const expensePayload = {
+      user_id: userId,
       name: name || (products.find(p => p.id === productId)?.name ?? 'Item'),
       price: Number(price),
       date: new Date(date).toISOString(),
@@ -71,15 +76,40 @@ export default function MonthlyExpenses({ products, loading, username }: Monthly
       notes: notes || '',
     };
 
-    setExpenses(prev => [expense, ...prev]);
+    const { data, error: insertError } = await supabase
+      .from('expenses')
+      .insert(expensePayload)
+      .select('id, user_id, name, price, date, product_id, notes, created_at')
+      .single();
+
+    if (insertError) {
+      setError(insertError.message);
+      return;
+    }
+
+    setError('');
+    setExpenses(prev => [data as Expense, ...prev]);
     setName('');
     setPrice('');
     setProductId('');
     setNotes('');
   };
 
-  const deleteExpense = (id: string) => {
+  const deleteExpense = async (id: string) => {
     if (!confirm('Delete this expense?')) return;
+
+    const { error: deleteError } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (deleteError) {
+      setError(deleteError.message);
+      return;
+    }
+
+    setError('');
     setExpenses(prev => prev.filter(e => e.id !== id));
   };
 
@@ -199,8 +229,11 @@ export default function MonthlyExpenses({ products, loading, username }: Monthly
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border p-4">
+              {error ? <div className="mb-3 text-xs text-red-500">{error}</div> : null}
               {currentMonthExpenses.length === 0 ? (
-                <div className="text-sm text-slate-400">No purchases added for this month.</div>
+                <div className="text-sm text-slate-400">
+                  {expensesLoading ? 'Loading expenses...' : 'No purchases added for this month.'}
+                </div>
               ) : (
                 <div className="space-y-3">
                   {currentMonthExpenses.map(e => (

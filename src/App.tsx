@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import ProductsView from './components/ProductsView';
 import PriceTracker from './components/PriceTracker';
@@ -9,28 +9,17 @@ import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
 import { usePages, useProducts } from './hooks/useData';
 import { supabase } from './lib/supabase';
-import type { ViewMode, Product, User, UserAccount } from './types';
-
-async function hashPassword(password: string): Promise<string> {
-  const msgBuffer = new TextEncoder().encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-const CURRENT_USER_KEY = 'nexora-current-user';
+import type { ViewMode, Product, User } from './types';
 
 type AuthResult =
   | { status: 'success' }
   | { status: 'missing' | 'invalid' | 'exists'; message?: string };
 
-type UserAccountRow = {
+type ProfileRow = {
+  id: string;
   name: string;
   username: string;
-  password_hash: string;
   profile_picture_url: string;
-  email: string;
   phone: string;
   bio: string;
 };
@@ -56,13 +45,13 @@ function AppContent({
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [showAddPage, setShowAddPage] = useState(false);
 
-  const { pages, addPage, deletePage } = usePages();
+  const { pages, addPage, deletePage } = usePages(currentUser.id);
 
   const isRecents = activeView === 'recents';
   const isPage = activeView === 'page';
 
   // Single fetch for all products — filtered client-side to avoid multiple Supabase calls
-  const { products: allProducts, loading, addProduct, updateProduct, deleteProduct } = useProducts();
+  const { products: allProducts, loading, addProduct, updateProduct, deleteProduct } = useProducts(currentUser.id);
 
   const products = useMemo(() => {
     if (isRecents) return allProducts.slice(0, 20);
@@ -136,7 +125,7 @@ function AppContent({
         {activeView === 'price-tracker' ? (
           <PriceTracker products={allProducts} loading={loading} />
         ) : activeView === 'monthly-expenses' ? (
-          <MonthlyExpenses products={allProducts} loading={loading} username={currentUser.username} />
+          <MonthlyExpenses products={allProducts} loading={loading} userId={currentUser.id} />
         ) : activeView === 'profile' ? (
           <ProfilePage currentUser={currentUser} onLogout={onLogout} onUpdateProfile={onUpdateProfile} />
         ) : (
@@ -169,85 +158,157 @@ function AppContent({
 
 export default function App() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    if (typeof window === 'undefined') return null;
-    const stored = window.localStorage.getItem(CURRENT_USER_KEY);
-    return stored ? JSON.parse(stored) : null;
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   const saveCurrentUser = useCallback((user: User | null) => {
     setCurrentUser(user);
-    if (user) {
-      window.localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-    } else {
-      window.localStorage.removeItem(CURRENT_USER_KEY);
-    }
   }, []);
+
+  const loadCurrentUser = useCallback(async (authUserId: string, fallbackEmail: string | undefined) => {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, name, username, profile_picture_url, phone, bio')
+      .eq('id', authUserId)
+      .maybeSingle<ProfileRow>();
+
+    const derivedUsername = fallbackEmail?.split('@')[0] ?? 'user';
+    const username = profile?.username ?? derivedUsername;
+
+    if (!profile) {
+      const defaultName = derivedUsername;
+      const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(defaultName)}&background=f59e0b&color=fff`;
+      await supabase.from('profiles').upsert({
+        id: authUserId,
+        username,
+        name: defaultName,
+        profile_picture_url: avatar,
+        phone: '',
+        bio: 'This user has not set a bio yet.',
+      });
+
+      return {
+        id: authUserId,
+        name: defaultName,
+        username,
+        profilePictureUrl: avatar,
+        email: fallbackEmail ?? `${username}@nexora.app`,
+        phone: '',
+        bio: 'This user has not set a bio yet.',
+      } as User;
+    }
+
+    return {
+      id: authUserId,
+      name: profile.name,
+      username: profile.username,
+      profilePictureUrl: profile.profile_picture_url,
+      email: fallbackEmail ?? `${profile.username}@nexora.app`,
+      phone: profile.phone,
+      bio: profile.bio,
+    } as User;
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const bootstrap = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !mounted) {
+        setAuthLoading(false);
+        return;
+      }
+
+      if (data.session?.user) {
+        const user = await loadCurrentUser(data.session.user.id, data.session.user.email);
+        if (mounted) saveCurrentUser(user);
+      }
+      if (mounted) setAuthLoading(false);
+    };
+
+    void bootstrap();
+
+    const { data: authSubscription } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+      if (!session?.user) {
+        saveCurrentUser(null);
+        setAuthMode('login');
+        setAuthLoading(false);
+        return;
+      }
+
+      const user = await loadCurrentUser(session.user.id, session.user.email);
+      if (mounted) {
+        saveCurrentUser(user);
+        setAuthLoading(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      authSubscription.subscription.unsubscribe();
+    };
+  }, [loadCurrentUser, saveCurrentUser]);
+
+  const toSyntheticEmail = (username: string) => `${username}@nexora.app`;
 
   const handleLogin = useCallback(
     async ({ username, password }: { username: string; password: string }) => {
-      const trimmedUsername = username.trim();
-      const { data, error } = await supabase
-        .from('user_accounts')
-        .select('name, username, password_hash, profile_picture_url, email, phone, bio')
-        .eq('username', trimmedUsername)
-        .maybeSingle<UserAccountRow>();
+      const trimmedUsername = username.trim().toLowerCase();
+      if (!/^[a-z0-9._-]{3,30}$/.test(trimmedUsername)) {
+        return { status: 'invalid', message: 'Username format is invalid.' } as AuthResult;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: toSyntheticEmail(trimmedUsername),
+        password,
+      });
 
       if (error) {
+        if (/invalid login credentials|email not confirmed/i.test(error.message)) {
+          return { status: 'invalid', message: 'Invalid username or password.' } as AuthResult;
+        }
         return {
           status: 'invalid',
           message: `Unable to log in right now: ${error.message}`,
         } as AuthResult;
       }
 
-      if (!data) {
+      if (!data.user) {
         return { status: 'missing' } as AuthResult;
       }
 
-      const hashed = await hashPassword(password);
-      if (data.password_hash !== hashed) {
-        return { status: 'invalid' } as AuthResult;
-      }
-
-      saveCurrentUser({
-        name: data.name,
-        username: data.username,
-        profilePictureUrl: data.profile_picture_url,
-        email: data.email,
-        phone: data.phone,
-        bio: data.bio,
-      });
+      const user = await loadCurrentUser(data.user.id, data.user.email);
+      saveCurrentUser(user);
       return { status: 'success' } as AuthResult;
     },
-    [saveCurrentUser]
+    [loadCurrentUser, saveCurrentUser]
   );
 
   const handleSignup = useCallback(
     async ({ name, username, password }: { name: string; username: string; password: string }) => {
-      const trimmedUsername = username.trim();
-      const hashed = await hashPassword(password);
+      const trimmedUsername = username.trim().toLowerCase();
+      if (!/^[a-z0-9._-]{3,30}$/.test(trimmedUsername)) {
+        return {
+          status: 'invalid',
+          message: 'Username must be 3-30 chars and use a-z, 0-9, dot, underscore, or hyphen.',
+        } as AuthResult;
+      }
 
-      const newAccount: UserAccount = {
-        name: name.trim(),
-        username: trimmedUsername,
-        password: hashed,
-        profilePictureUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=7C3AED&color=fff`,
-        email: `${trimmedUsername}@nexora.app`,
-        phone: '',
-        bio: 'This user has not set a bio yet.',
-      };
-
-      const { error } = await supabase.from('user_accounts').insert({
-        name: newAccount.name,
-        username: newAccount.username,
-        password_hash: newAccount.password,
-        profile_picture_url: newAccount.profilePictureUrl,
-        email: newAccount.email,
-        phone: newAccount.phone,
-        bio: newAccount.bio,
+      const email = toSyntheticEmail(trimmedUsername);
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username: trimmedUsername,
+            name: name.trim(),
+          },
+        },
       });
 
       if (error) {
-        if (error.code === '23505') {
+        if (/already registered/i.test(error.message)) {
           return { status: 'exists' } as AuthResult;
         }
         return {
@@ -256,13 +317,36 @@ export default function App() {
         } as AuthResult;
       }
 
+      const authUser = data.user;
+      if (!authUser) {
+        return { status: 'invalid', message: 'Unable to create account session.' } as AuthResult;
+      }
+
+      const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=f59e0b&color=fff`;
+      const profileError = await supabase.from('profiles').upsert({
+        id: authUser.id,
+        username: trimmedUsername,
+        name: name.trim(),
+        profile_picture_url: avatar,
+        phone: '',
+        bio: 'This user has not set a bio yet.',
+      });
+
+      if (profileError.error) {
+        return {
+          status: 'invalid',
+          message: `Account created but profile setup failed: ${profileError.error.message}`,
+        } as AuthResult;
+      }
+
       saveCurrentUser({
-        name: newAccount.name,
-        username: newAccount.username,
-        profilePictureUrl: newAccount.profilePictureUrl,
-        email: newAccount.email,
-        phone: newAccount.phone,
-        bio: newAccount.bio,
+        id: authUser.id,
+        name: name.trim(),
+        username: trimmedUsername,
+        profilePictureUrl: avatar,
+        email,
+        phone: '',
+        bio: 'This user has not set a bio yet.',
       });
       return { status: 'success' } as AuthResult;
     },
@@ -270,8 +354,7 @@ export default function App() {
   );
 
   const handleLogout = useCallback(() => {
-    saveCurrentUser(null);
-    setAuthMode('login');
+    void supabase.auth.signOut();
   }, [saveCurrentUser]);
 
   const handleUpdateProfile = useCallback(
@@ -280,29 +363,22 @@ export default function App() {
         return { status: 'invalid', message: 'No active user session.' } as const;
       }
 
-      const updates: {
+      const profileUpdates: {
         name: string;
         profile_picture_url: string;
-        email: string;
         bio: string;
         updated_at: string;
-        password_hash?: string;
       } = {
         name: name.trim(),
         profile_picture_url: profilePictureUrl.trim(),
-        email: email.trim(),
         bio: bio.trim(),
         updated_at: new Date().toISOString(),
       };
 
-      if (password?.trim()) {
-        updates.password_hash = await hashPassword(password);
-      }
-
       const { error } = await supabase
-        .from('user_accounts')
-        .update(updates)
-        .eq('username', currentUser.username);
+        .from('profiles')
+        .update(profileUpdates)
+        .eq('id', currentUser.id);
 
       if (error) {
         return {
@@ -311,18 +387,47 @@ export default function App() {
         } as const;
       }
 
+      const nextEmail = email.trim();
+      if (nextEmail && nextEmail !== currentUser.email) {
+        const emailUpdate = await supabase.auth.updateUser({ email: nextEmail });
+        if (emailUpdate.error) {
+          return {
+            status: 'invalid',
+            message: `Profile updated but email change failed: ${emailUpdate.error.message}`,
+          } as const;
+        }
+      }
+
+      if (password?.trim()) {
+        const passwordUpdate = await supabase.auth.updateUser({ password: password.trim() });
+        if (passwordUpdate.error) {
+          return {
+            status: 'invalid',
+            message: `Profile updated but password change failed: ${passwordUpdate.error.message}`,
+          } as const;
+        }
+      }
+
       saveCurrentUser({
         ...currentUser,
-        name: updates.name,
-        profilePictureUrl: updates.profile_picture_url,
-        email: updates.email,
-        bio: updates.bio,
+        name: profileUpdates.name,
+        profilePictureUrl: profileUpdates.profile_picture_url,
+        email: nextEmail,
+        bio: profileUpdates.bio,
       });
 
       return { status: 'success' } as const;
     },
     [currentUser, saveCurrentUser]
   );
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <p className="text-sm text-slate-500">Preparing your workspace...</p>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return authMode === 'login' ? (

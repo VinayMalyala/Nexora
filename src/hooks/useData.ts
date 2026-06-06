@@ -25,18 +25,25 @@ function mapProductRow(row: SupabaseProductRow): Product {
   };
 }
 
-export function usePages() {
+export function usePages(userId?: string | null) {
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchPages = useCallback(async () => {
+    if (!userId) {
+      setPages([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     const { data, error: pageError } = await supabase
       .from('pages')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: true });
 
     if (pageError) {
@@ -46,13 +53,19 @@ export function usePages() {
     }
 
     setLoading(false);
-  }, []);
+  }, [userId]);
 
   const addPage = useCallback(async (name: string, icon: string, color: string) => {
+    if (!userId) {
+      const err = { message: 'User session is required.' } as Error;
+      setError(err.message);
+      return { data: null, error: err };
+    }
+
     setError(null);
     const { data, error } = await supabase
       .from('pages')
-      .insert({ name, icon, color })
+      .insert({ name, icon, color, user_id: userId })
       .select()
       .single();
 
@@ -63,18 +76,19 @@ export function usePages() {
 
     setPages(prev => [...prev, data]);
     return { data, error: null };
-  }, []);
+  }, [userId]);
 
   const deletePage = useCallback(async (id: string) => {
     setError(null);
-    const { error } = await supabase.from('pages').delete().eq('id', id);
+    const query = supabase.from('pages').delete().eq('id', id);
+    const { error } = userId ? await query.eq('user_id', userId) : await query;
     if (error) {
       setError(error.message);
       return { error };
     }
     setPages(prev => prev.filter(page => page.id !== id));
     return { error: null };
-  }, []);
+  }, [userId]);
 
   useEffect(() => { fetchPages(); }, [fetchPages]);
 
@@ -82,13 +96,19 @@ export function usePages() {
 }
 
 // Fetches ALL products — filtering is done client-side in consumers.
-export function useProducts() {
+export function useProducts(userId?: string | null) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const fetchProducts = useCallback(async () => {
+    if (!userId) {
+      setProducts([]);
+      setLoading(false);
+      return;
+    }
+
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -99,6 +119,7 @@ export function useProducts() {
     const { data, error: productError } = await supabase
       .from('products')
       .select('*, product_tags(tag)')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .abortSignal(controller.signal);
 
@@ -111,7 +132,7 @@ export function useProducts() {
     }
 
     setLoading(false);
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchProducts();
@@ -120,10 +141,16 @@ export function useProducts() {
 
   const addProduct = useCallback(
     async (product: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'tags' | 'sort_order'>, tags: string[]) => {
+      if (!userId) {
+        const err = { message: 'User session is required.' } as Error;
+        setError(err.message);
+        return { data: null, error: err };
+      }
+
       setError(null);
       const { data, error } = await supabase
         .from('products')
-        .insert({ ...product, sort_order: 0 })
+        .insert({ ...product, sort_order: 0, user_id: userId })
         .select()
         .single();
 
@@ -136,19 +163,26 @@ export function useProducts() {
         await supabase.from('product_tags').insert(tags.map(tag => ({ product_id: data.id, tag })));
       }
 
-      await fetchProducts();
-      return { data: data as Product, error: null };
+      const next: Product = {
+        ...(data as Product),
+        company: data.company ?? '',
+        tags,
+      };
+      setProducts(prev => [next, ...prev]);
+      return { data: next, error: null };
     },
-    [fetchProducts]
+    [userId]
   );
 
   const updateProduct = useCallback(
     async (id: string, updates: Partial<Omit<Product, 'id' | 'created_at' | 'tags'>>, tags?: string[]) => {
       setError(null);
-      const { error } = await supabase
+      const query = supabase
         .from('products')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id);
+
+      const { error } = userId ? await query.eq('user_id', userId) : await query;
 
       if (error) {
         setError(error.message);
@@ -162,22 +196,35 @@ export function useProducts() {
         }
       }
 
-      await fetchProducts();
+      setProducts(prev =>
+        prev.map(product =>
+          product.id === id
+            ? {
+                ...product,
+                ...updates,
+                updated_at: new Date().toISOString(),
+                tags: tags ?? product.tags,
+              }
+            : product
+        )
+      );
+
       return { error: null };
     },
-    [fetchProducts]
+    [userId]
   );
 
   const deleteProduct = useCallback(async (id: string) => {
     setError(null);
-    const { error } = await supabase.from('products').delete().eq('id', id);
+    const query = supabase.from('products').delete().eq('id', id);
+    const { error } = userId ? await query.eq('user_id', userId) : await query;
     if (error) {
       setError(error.message);
       return { error };
     }
     setProducts(prev => prev.filter(product => product.id !== id));
     return { error: null };
-  }, []);
+  }, [userId]);
 
   return {
     products,

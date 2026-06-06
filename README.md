@@ -23,6 +23,7 @@ Buying decisions are easier when your product data is organized in one place. Ne
 - Select a product and calculate price per gram, kilogram, milliliter, or liter
 - Override stored price for one-off purchase comparisons
 - Copy calculated unit rate directly
+- Best-value snapshot that ranks top product rates for the entered quantity
 
 ### Monthly Expenses
 - Log monthly purchases with date, product linkage, notes, and amount
@@ -30,8 +31,10 @@ Buying decisions are easier when your product data is organized in one place. Ne
 - Isolated expense tracking per user
 
 ### Authentication and Profile
-- Username/password signup and login
-- Cross-device account persistence via Supabase `user_accounts`
+- Supabase Auth backed signup/login
+- Username-based UX with secure auth sessions
+- Per-user data isolation via row-level security (RLS)
+- Cloud profile storage via `profiles` table
 - Editable profile: profile picture URL, name, email, bio, and password
 - Username is intentionally read-only
 
@@ -98,7 +101,10 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 ### 4. Run Database Migrations
 
-Apply SQL files from `supabase/migrations` to your Supabase project, including the `user_accounts` migration used for shared login/profile data.
+Apply all SQL files from `supabase/migrations` to your Supabase project.
+
+Important: this project uses Supabase Auth and a synthetic username email pattern (`username@nexora.app`).
+For smooth onboarding, disable email confirmation in Supabase Auth settings for this project.
 
 ### 5. Start Development Server
 
@@ -133,8 +139,9 @@ Important: Use the same Supabase project (or equivalent migrated schema/data) fo
 
 - Products and pages are stored in Supabase tables.
 - Product tags are stored in a separate relation for flexible filtering.
-- User accounts and profile updates are stored in `user_accounts`.
-- Monthly expenses are currently persisted in browser local storage per username.
+- Profile data is stored in `profiles` and linked to `auth.users`.
+- Monthly expenses are stored in the `expenses` table.
+- RLS policies enforce per-user access on pages, products, tags, profiles, and expenses.
 
 ## Future Enhancements
 
