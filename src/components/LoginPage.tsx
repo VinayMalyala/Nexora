@@ -2,7 +2,10 @@ import { useState, FormEvent } from 'react';
 import { User } from 'lucide-react';
 
 interface LoginPageProps {
-  onLogin: (credentials: { username: string; password: string }) => Promise<'success' | 'missing' | 'invalid'>;
+  onLogin: (credentials: { username: string; password: string }) => Promise<{
+    status: 'success' | 'missing' | 'invalid';
+    message?: string;
+  }>;
   onGoToSignup: () => void;
 }
 
@@ -25,10 +28,10 @@ export default function LoginPage({ onLogin, onGoToSignup }: LoginPageProps) {
 
     setSubmitting(false);
 
-    if (result === 'missing') {
+    if (result.status === 'missing') {
       setError('No account found with that username.');
-    } else if (result === 'invalid') {
-      setError('Invalid username or password.');
+    } else if (result.status === 'invalid') {
+      setError(result.message ?? 'Invalid username or password.');
     }
   };
 

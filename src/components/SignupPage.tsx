@@ -2,7 +2,10 @@ import { useState, FormEvent } from 'react';
 import { UserPlus } from 'lucide-react';
 
 interface SignupPageProps {
-  onSignup: (data: { name: string; username: string; password: string }) => Promise<'success' | 'exists'>;
+  onSignup: (data: { name: string; username: string; password: string }) => Promise<{
+    status: 'success' | 'exists' | 'invalid';
+    message?: string;
+  }>;
   onGoToLogin: () => void;
 }
 
@@ -29,8 +32,10 @@ export default function SignupPage({ onSignup, onGoToLogin }: SignupPageProps) {
     const result = await onSignup({ name, username, password });
     setSubmitting(false);
 
-    if (result === 'exists') {
+    if (result.status === 'exists') {
       setError('That username is already taken.');
+    } else if (result.status === 'invalid') {
+      setError(result.message ?? 'Unable to sign up right now.');
     }
   };
 

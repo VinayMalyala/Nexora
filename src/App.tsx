@@ -8,6 +8,7 @@ import AddPageModal from './components/AddPageModal';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
 import { usePages, useProducts } from './hooks/useData';
+import { supabase } from './lib/supabase';
 import type { ViewMode, Product, User, UserAccount } from './types';
 
 async function hashPassword(password: string): Promise<string> {
@@ -18,10 +19,39 @@ async function hashPassword(password: string): Promise<string> {
     .join('');
 }
 
-const ACCOUNTS_KEY = 'nexora-accounts-v2';
 const CURRENT_USER_KEY = 'nexora-current-user';
 
-function AppContent({ currentUser, onLogout }: { currentUser: User; onLogout: () => void }) {
+type AuthResult =
+  | { status: 'success' }
+  | { status: 'missing' | 'invalid' | 'exists'; message?: string };
+
+type UserAccountRow = {
+  name: string;
+  username: string;
+  password_hash: string;
+  profile_picture_url: string;
+  email: string;
+  phone: string;
+  bio: string;
+};
+
+type ProfileUpdateData = {
+  name: string;
+  profilePictureUrl: string;
+  email: string;
+  bio: string;
+  password?: string;
+};
+
+function AppContent({
+  currentUser,
+  onLogout,
+  onUpdateProfile,
+}: {
+  currentUser: User;
+  onLogout: () => void;
+  onUpdateProfile: (data: ProfileUpdateData) => Promise<{ status: 'success' | 'invalid'; message?: string }>;
+}) {
   const [activeView, setActiveView] = useState<ViewMode>('home');
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [showAddPage, setShowAddPage] = useState(false);
@@ -52,9 +82,11 @@ function AppContent({ currentUser, onLogout }: { currentUser: User; onLogout: ()
       editId?: string
     ) => {
       if (editId) {
-        await updateProduct(editId, data, tags);
+        const { error } = await updateProduct(editId, data, tags);
+        if (error) throw new Error(error.message);
       } else {
-        await addProduct(data, tags);
+        const { error } = await addProduct(data, tags);
+        if (error) throw new Error(error.message);
       }
     },
     [addProduct, updateProduct]
@@ -106,7 +138,7 @@ function AppContent({ currentUser, onLogout }: { currentUser: User; onLogout: ()
         ) : activeView === 'monthly-expenses' ? (
           <MonthlyExpenses products={allProducts} loading={loading} username={currentUser.username} />
         ) : activeView === 'profile' ? (
-          <ProfilePage currentUser={currentUser} onLogout={onLogout} />
+          <ProfilePage currentUser={currentUser} onLogout={onLogout} onUpdateProfile={onUpdateProfile} />
         ) : (
           <ProductsView
             title={viewTitle}
@@ -142,17 +174,6 @@ export default function App() {
     const stored = window.localStorage.getItem(CURRENT_USER_KEY);
     return stored ? JSON.parse(stored) : null;
   });
-  const [accounts, setAccounts] = useState<UserAccount[]>(() => {
-    if (typeof window === 'undefined') return [];
-    const stored = window.localStorage.getItem(ACCOUNTS_KEY);
-    return stored ? JSON.parse(stored) : [];
-  });
-
-  const saveAccounts = useCallback((next: UserAccount[]) => {
-    setAccounts(next);
-    window.localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(next));
-  }, []);
-
   const saveCurrentUser = useCallback((user: User | null) => {
     setCurrentUser(user);
     if (user) {
@@ -164,38 +185,47 @@ export default function App() {
 
   const handleLogin = useCallback(
     async ({ username, password }: { username: string; password: string }) => {
-      const account = accounts.find(acc => acc.username === username.trim());
-      if (!account) {
-        return 'missing' as const;
+      const trimmedUsername = username.trim();
+      const { data, error } = await supabase
+        .from('user_accounts')
+        .select('name, username, password_hash, profile_picture_url, email, phone, bio')
+        .eq('username', trimmedUsername)
+        .maybeSingle<UserAccountRow>();
+
+      if (error) {
+        return {
+          status: 'invalid',
+          message: `Unable to log in right now: ${error.message}`,
+        } as AuthResult;
+      }
+
+      if (!data) {
+        return { status: 'missing' } as AuthResult;
       }
 
       const hashed = await hashPassword(password);
-      if (account.password !== hashed) {
-        return 'invalid' as const;
+      if (data.password_hash !== hashed) {
+        return { status: 'invalid' } as AuthResult;
       }
 
       saveCurrentUser({
-        name: account.name,
-        username: account.username,
-        profilePictureUrl: account.profilePictureUrl,
-        email: account.email,
-        phone: account.phone,
-        bio: account.bio,
+        name: data.name,
+        username: data.username,
+        profilePictureUrl: data.profile_picture_url,
+        email: data.email,
+        phone: data.phone,
+        bio: data.bio,
       });
-      return 'success' as const;
+      return { status: 'success' } as AuthResult;
     },
-    [accounts, saveCurrentUser]
+    [saveCurrentUser]
   );
 
   const handleSignup = useCallback(
     async ({ name, username, password }: { name: string; username: string; password: string }) => {
       const trimmedUsername = username.trim();
-      const existing = accounts.some(acc => acc.username === trimmedUsername);
-      if (existing) {
-        return 'exists' as const;
-      }
-
       const hashed = await hashPassword(password);
+
       const newAccount: UserAccount = {
         name: name.trim(),
         username: trimmedUsername,
@@ -206,8 +236,26 @@ export default function App() {
         bio: 'This user has not set a bio yet.',
       };
 
-      const nextAccounts = [...accounts, newAccount];
-      saveAccounts(nextAccounts);
+      const { error } = await supabase.from('user_accounts').insert({
+        name: newAccount.name,
+        username: newAccount.username,
+        password_hash: newAccount.password,
+        profile_picture_url: newAccount.profilePictureUrl,
+        email: newAccount.email,
+        phone: newAccount.phone,
+        bio: newAccount.bio,
+      });
+
+      if (error) {
+        if (error.code === '23505') {
+          return { status: 'exists' } as AuthResult;
+        }
+        return {
+          status: 'invalid',
+          message: `Unable to create account: ${error.message}`,
+        } as AuthResult;
+      }
+
       saveCurrentUser({
         name: newAccount.name,
         username: newAccount.username,
@@ -216,15 +264,65 @@ export default function App() {
         phone: newAccount.phone,
         bio: newAccount.bio,
       });
-      return 'success' as const;
+      return { status: 'success' } as AuthResult;
     },
-    [accounts, saveAccounts, saveCurrentUser]
+    [saveCurrentUser]
   );
 
   const handleLogout = useCallback(() => {
     saveCurrentUser(null);
     setAuthMode('login');
   }, [saveCurrentUser]);
+
+  const handleUpdateProfile = useCallback(
+    async ({ name, profilePictureUrl, email, bio, password }: ProfileUpdateData) => {
+      if (!currentUser) {
+        return { status: 'invalid', message: 'No active user session.' } as const;
+      }
+
+      const updates: {
+        name: string;
+        profile_picture_url: string;
+        email: string;
+        bio: string;
+        updated_at: string;
+        password_hash?: string;
+      } = {
+        name: name.trim(),
+        profile_picture_url: profilePictureUrl.trim(),
+        email: email.trim(),
+        bio: bio.trim(),
+        updated_at: new Date().toISOString(),
+      };
+
+      if (password?.trim()) {
+        updates.password_hash = await hashPassword(password);
+      }
+
+      const { error } = await supabase
+        .from('user_accounts')
+        .update(updates)
+        .eq('username', currentUser.username);
+
+      if (error) {
+        return {
+          status: 'invalid',
+          message: `Unable to update profile: ${error.message}`,
+        } as const;
+      }
+
+      saveCurrentUser({
+        ...currentUser,
+        name: updates.name,
+        profilePictureUrl: updates.profile_picture_url,
+        email: updates.email,
+        bio: updates.bio,
+      });
+
+      return { status: 'success' } as const;
+    },
+    [currentUser, saveCurrentUser]
+  );
 
   if (!currentUser) {
     return authMode === 'login' ? (
@@ -240,6 +338,12 @@ export default function App() {
     );
   }
 
-  return <AppContent currentUser={currentUser} onLogout={handleLogout} />;
+  return (
+    <AppContent
+      currentUser={currentUser}
+      onLogout={handleLogout}
+      onUpdateProfile={handleUpdateProfile}
+    />
+  );
 }
 

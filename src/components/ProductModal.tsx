@@ -61,6 +61,7 @@ export default memo(function ProductModal({
   const [tagInput, setTagInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState('');
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -97,28 +98,36 @@ export default memo(function ProductModal({
         return;
       }
 
+      setSubmitError('');
+
       const finalTags = tagInput
         ? [...tags, ...parseTags(tagInput).filter(tag => !tags.includes(tag))]
         : tags;
 
       setSaving(true);
-      await onSave(
-        {
-          name: form.name.trim(),
-          price: Number(form.price),
-          original_price: form.original_price ? Number(form.original_price) : null,
-          image_url: form.image_url.trim(),
-          category: form.category,
-          page_id: form.page_id || null,
-          company: form.company?.trim() || '',
-          product_url: form.product_url.trim(),
-          notes: form.notes.trim(),
-        },
-        finalTags,
-        editProduct?.id
-      );
-      setSaving(false);
-      onClose();
+      try {
+        await onSave(
+          {
+            name: form.name.trim(),
+            price: Number(form.price),
+            original_price: form.original_price ? Number(form.original_price) : null,
+            image_url: form.image_url.trim(),
+            category: form.category,
+            page_id: form.page_id || null,
+            company: form.company?.trim() || '',
+            product_url: form.product_url.trim(),
+            notes: form.notes.trim(),
+          },
+          finalTags,
+          editProduct?.id
+        );
+        onClose();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to save product';
+        setSubmitError(message);
+      } finally {
+        setSaving(false);
+      }
     },
     [editProduct?.id, form, onClose, onSave, parseTags, tagInput, tags, validate]
   );
@@ -283,6 +292,14 @@ export default memo(function ProductModal({
           </div>
 
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 flex gap-2 sm:gap-3">
+            {submitError ? (
+              <p className="w-full text-xs text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                {submitError}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="px-4 sm:px-6 pb-3 sm:pb-4 flex gap-2 sm:gap-3">
             <button
               type="button"
               onClick={onClose}
