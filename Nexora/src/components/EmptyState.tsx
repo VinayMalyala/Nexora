@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Package, Plus } from 'lucide-react';
 
 interface EmptyStateProps {
@@ -7,7 +8,7 @@ interface EmptyStateProps {
   actionLabel?: string;
 }
 
-export default function EmptyState({
+function EmptyState({
   message = 'No products yet',
   subtext = 'Start adding products you want to track or buy later.',
   onAdd,
@@ -30,3 +31,5 @@ export default function EmptyState({
     </div>
   );
 }
+
+export default memo(EmptyState);

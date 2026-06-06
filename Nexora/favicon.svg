@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Nexora favicon">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f97316" />
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="104" height="104" rx="28" fill="url(#grad)" />
+  <g fill="#fff" opacity="0.95">
+    <path d="M52 36l4.5 10.3L68 48.4l-9 7.8L61.2 66 52 59.3 42.8 66l2.2-9.8-9-7.8 11.5-1.1L52 36z" />
+  </g>
+  <g fill="#fff" opacity="0.9">
+    <path d="M74 28l2.6 5.8 6.4.6-4.9 4.3 1.5 6.4-5.6-3.4-5.6 3.4 1.5-6.4-4.9-4.3 6.4-.6L74 28z" />
+  </g>
+  <g fill="#fff" opacity="0.8">
+    <circle cx="36" cy="78" r="6" />
+  </g>
+  <g fill="#fff" opacity="0.85">
+    <path d="M30 90l3 7.2 7.5 1-6 5 1.7 7.5-6.7-4-6.7 4 1.7-7.5-6-5 7.5-1L30 90z" />
+  </g>
+</svg>

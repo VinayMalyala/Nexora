@@ -1,5 +1,4 @@
-import { useState, useMemo } from 'react';
-import { DragDropContext, Droppable, DropResult } from 'react-beautiful-dnd';
+import { memo, useCallback, useMemo, useState } from 'react';
 import ProductCard from './ProductCard';
 import ProductsHeader from './ProductsHeader';
 import EmptyState from './EmptyState';
@@ -14,13 +13,11 @@ interface ProductsViewProps {
   loading: boolean;
   defaultPageId?: string | null;
   showPageFilter?: boolean;
-  onAdd: (data: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'tags' | 'sort_order' | 'is_favorite'>, tags: string[], editId?: string) => Promise<void>;
+  onAdd: (data: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'tags' | 'sort_order'>, tags: string[], editId?: string) => Promise<void>;
   onDelete: (id: string) => void;
-  onReorder: (source: number, destination: number, filteredProducts?: Product[]) => Promise<void>;
-  onToggleFavorite: (productId: string, isFavorite: boolean) => Promise<void>;
 }
 
-export default function ProductsView({
+function ProductsView({
   title,
   subtitle,
   products,
@@ -30,8 +27,6 @@ export default function ProductsView({
   showPageFilter,
   onAdd,
   onDelete,
-  onReorder,
-  onToggleFavorite,
 }: ProductsViewProps) {
   const [showModal, setShowModal] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
@@ -39,19 +34,22 @@ export default function ProductsView({
   const [filterCategory, setFilterCategory] = useState('');
   const [filterPage, setFilterPage] = useState('');
   const [filterTag, setFilterTag] = useState('');
+  const [filterCompany, setFilterCompany] = useState('');
 
   const filtered = useMemo(() => {
     return products.filter(p => {
       const matchSearch =
         !search ||
         p.name.toLowerCase().includes(search.toLowerCase()) ||
+        p.company?.toLowerCase().includes(search.toLowerCase()) ||
         p.tags?.some(t => t.toLowerCase().includes(search.toLowerCase()));
       const matchCategory = !filterCategory || p.category === filterCategory;
       const matchPage = !filterPage || p.page_id === filterPage;
       const matchTag = !filterTag || p.tags?.includes(filterTag);
-      return matchSearch && matchCategory && matchPage && matchTag;
+      const matchCompany = !filterCompany || p.company?.toLowerCase() === filterCompany.toLowerCase();
+      return matchSearch && matchCategory && matchPage && matchTag && matchCompany;
     });
-  }, [products, search, filterCategory, filterPage, filterTag]);
+  }, [products, search, filterCategory, filterPage, filterTag, filterCompany]);
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
@@ -59,16 +57,42 @@ export default function ProductsView({
     return Array.from(tags).sort();
   }, [products]);
 
+  const allCompanies = useMemo(() => {
+    const companies = new Set<string>();
+    products.forEach(p => {
+      if (p.company?.trim()) companies.add(p.company.trim());
+    });
+    return Array.from(companies).sort((a, b) => a.localeCompare(b));
+  }, [products]);
+
   const resolvedSubtitle = `${filtered.length} product${filtered.length !== 1 ? 's' : ''} · ${
     filtered.reduce((acc, p) => acc + p.price, 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
   } total`;
 
-  const handleDragEnd = async (result: DropResult) => {
-    const { source, destination } = result;
-    if (!destination) return;
-    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
-    await onReorder(source.index, destination.index, filtered);
-  };
+  const handleApplyFilters = useCallback(
+    ({ category, pageId, tag, company }: { category: string; pageId: string; tag: string; company: string }) => {
+      setFilterCategory(category);
+      setFilterPage(pageId);
+      setFilterTag(tag);
+      setFilterCompany(company);
+    },
+    []
+  );
+
+  const handleAddProduct = useCallback(() => {
+    setEditProduct(null);
+    setShowModal(true);
+  }, []);
+
+  const handleEditProduct = useCallback((product: Product) => {
+    setEditProduct(product);
+    setShowModal(true);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setShowModal(false);
+    setEditProduct(null);
+  }, []);
 
   if (loading) {
     return (
@@ -77,22 +101,22 @@ export default function ProductsView({
           title={title}
           subtitle={subtitle}
           pages={pages}
-          onAddProduct={() => { setEditProduct(null); setShowModal(true); }}
+          onAddProduct={handleAddProduct}
           onSearch={setSearch}
-          onFilterCategory={setFilterCategory}
-          onFilterPage={setFilterPage}
-          onFilterTag={setFilterTag}
+          onApplyFilters={handleApplyFilters}
           activeCategory={filterCategory}
           activePage={filterPage}
           activeTag={filterTag}
+          activeCompany={filterCompany}
           availableTags={allTags}
+          availableCompanies={allCompanies}
           showPageFilter={showPageFilter}
         />
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-5">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="bg-white rounded-2xl border border-slate-100 overflow-hidden animate-pulse">
-                <div className="h-40 sm:h-48 bg-slate-100" />
+                <div className="h-[120px] sm:h-[150px] bg-slate-100" />
                 <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
                   <div className="h-3 bg-slate-100 rounded w-1/3" />
                   <div className="h-4 bg-slate-100 rounded w-4/5" />
@@ -115,26 +139,26 @@ export default function ProductsView({
           title={title}
           subtitle={products.length > 0 ? resolvedSubtitle : subtitle}
           pages={pages}
-          onAddProduct={() => { setEditProduct(null); setShowModal(true); }}
+          onAddProduct={handleAddProduct}
           onSearch={setSearch}
-          onFilterCategory={setFilterCategory}
-          onFilterPage={setFilterPage}
-          onFilterTag={setFilterTag}
+          onApplyFilters={handleApplyFilters}
           activeCategory={filterCategory}
           activePage={filterPage}
           activeTag={filterTag}
+          activeCompany={filterCompany}
           availableTags={allTags}
+          availableCompanies={allCompanies}
           showPageFilter={showPageFilter}
         />
         <EmptyState
-          onAdd={() => { setEditProduct(null); setShowModal(true); }}
-          message={search || filterCategory || filterPage || filterTag ? 'No matching products' : 'No products yet'}
+          onAdd={handleAddProduct}
+          message={search || filterCategory || filterPage || filterTag || filterCompany ? 'No matching products' : 'No products yet'}
           subtext={
-            search || filterCategory || filterPage || filterTag
+            search || filterCategory || filterPage || filterTag || filterCompany
               ? 'Try adjusting your search or filters.'
               : 'Start adding products you want to track or buy later.'
           }
-          actionLabel={search || filterCategory || filterPage || filterTag ? 'Add Product' : 'Add your first product'}
+          actionLabel={search || filterCategory || filterPage || filterTag || filterCompany ? 'Add Product' : 'Add your first product'}
         />
       </div>
     );
@@ -146,56 +170,43 @@ export default function ProductsView({
         title={title}
         subtitle={resolvedSubtitle}
         pages={pages}
-        onAddProduct={() => { setEditProduct(null); setShowModal(true); }}
+        onAddProduct={handleAddProduct}
         onSearch={setSearch}
-        onFilterCategory={setFilterCategory}
-        onFilterPage={setFilterPage}
-        onFilterTag={setFilterTag}
+        onApplyFilters={handleApplyFilters}
         activeCategory={filterCategory}
         activePage={filterPage}
         activeTag={filterTag}
+        activeCompany={filterCompany}
         availableTags={allTags}
+        availableCompanies={allCompanies}
         showPageFilter={showPageFilter}
       />
 
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="products-grid" direction="vertical">
-          {(provided, snapshot) => (
-            <div
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-              className={`flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 transition-colors ${
-                snapshot.isDraggingOver ? 'bg-amber-50/30' : ''
-              }`}
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-5 auto-rows-max">
-                {filtered.map((product, idx) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    pages={pages}
-                    index={idx}
-                    onDelete={onDelete}
-                    onEdit={(p) => { setEditProduct(p); setShowModal(true); }}
-                    onToggleFavorite={onToggleFavorite}
-                  />
-                ))}
-              </div>
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-5 auto-rows-max">
+          {filtered.map(product => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              pages={pages}
+              onDelete={onDelete}
+              onEdit={handleEditProduct}
+            />
+          ))}
+        </div>
+      </div>
 
       {showModal && (
         <ProductModal
           pages={pages}
           defaultPageId={defaultPageId}
           editProduct={editProduct}
-          onClose={() => { setShowModal(false); setEditProduct(null); }}
+          onClose={handleCloseModal}
           onSave={onAdd}
         />
       )}
     </div>
   );
 }
+
+export default memo(ProductsView);

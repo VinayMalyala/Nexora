@@ -14,13 +14,13 @@ export interface Product {
   image_url: string;
   category: string;
   page_id: string | null;
+  company?: string;
   product_url: string;
   notes: string;
   sort_order: number;
   created_at: string;
   updated_at: string;
   tags?: string[];
-  is_favorite?: boolean;
 }
 
 export interface ProductTag {
@@ -29,7 +29,20 @@ export interface ProductTag {
   tag: string;
 }
 
-export type ViewMode = 'home' | 'recents' | 'favorites' | 'page';
+export interface User {
+  name: string;
+  username: string;
+  profilePictureUrl: string;
+  email: string;
+  phone: string;
+  bio: string;
+}
+
+export interface UserAccount extends User {
+  password: string;
+}
+
+export type ViewMode = 'home' | 'recents' | 'page' | 'price-tracker' | 'monthly-expenses' | 'profile';
 
 export const CATEGORIES = [
   'Personal Care',

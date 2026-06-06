@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { memo, useState } from 'react';
 import {
   Home,
   Clock,
-  Heart,
   ChevronDown,
   ChevronRight,
   Plus,
@@ -12,6 +11,7 @@ import {
   Sparkles,
   Menu,
   X,
+  User,
 } from 'lucide-react';
 import type { Page, ViewMode } from '../types';
 
@@ -24,7 +24,7 @@ interface SidebarProps {
   onDeletePage: (id: string) => void;
 }
 
-export default function Sidebar({
+function Sidebar({
   pages,
   activeView,
   activePageId,
@@ -91,12 +91,6 @@ export default function Sidebar({
           'Recents',
           activeView === 'recents',
           () => { onNavigate('recents'); setMobileOpen(false); }
-        )}
-        {navItem(
-          <Heart size={16} />,
-          'Favorites',
-          activeView === 'favorites',
-          () => { onNavigate('favorites'); setMobileOpen(false); }
         )}
 
         <div className="pt-2 sm:pt-3 pb-1">
@@ -179,8 +173,48 @@ export default function Sidebar({
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-slate-100">
-        <p className="text-xs text-slate-300 text-center">Personal Price Tracker</p>
+      <div className="px-4 py-3 border-t border-slate-100 space-y-2">
+        <button
+          onClick={() => { onNavigate('monthly-expenses'); setMobileOpen(false); }}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+            activeView === 'monthly-expenses'
+              ? 'bg-[#7C4DFF] text-white'
+              : 'bg-white text-slate-700 hover:bg-slate-50'
+          }`}
+        >
+          <span className={`flex-shrink-0 ${activeView === 'monthly-expenses' ? 'text-white' : 'text-slate-500'}`}>
+            <FileText size={14} />
+          </span>
+          <span className="flex-1 text-left">Monthly Expenses</span>
+        </button>
+
+        <button
+          onClick={() => { onNavigate('price-tracker'); setMobileOpen(false); }}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+            activeView === 'price-tracker'
+              ? 'bg-[#3CC7E6] text-white'
+              : 'bg-[#4DDAFF] text-slate-800 hover:bg-[#3CC7E6]'
+          }`}
+        >
+          <span className={`flex-shrink-0 ${activeView === 'price-tracker' ? 'text-white' : 'text-slate-800'}`}>
+            <Tag size={14} />
+          </span>
+          <span className="flex-1 text-left">Price Tracker</span>
+        </button>
+
+        <button
+          onClick={() => { onNavigate('profile'); setMobileOpen(false); }}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+            activeView === 'profile'
+              ? 'bg-amber-50 text-amber-700'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
+          }`}
+        >
+          <span className={`flex-shrink-0 ${activeView === 'profile' ? 'text-amber-600' : 'text-slate-400 group-hover:text-slate-600'}`}>
+            <User size={16} />
+          </span>
+          <span className="flex-1 text-left">Profile</span>
+        </button>
       </div>
     </aside>
   );
@@ -205,8 +239,8 @@ export default function Sidebar({
 
       {/* Sidebar */}
       <div
-        className={`fixed sm:relative inset-y-0 left-0 z-30 sm:z-auto transition-transform duration-300 max-h-screen overflow-hidden flex-col hidden sm:flex ${
-          mobileOpen ? 'translate-x-0 flex' : '-translate-x-full sm:translate-x-0'
+        className={`fixed sm:relative inset-y-0 left-0 z-30 sm:z-auto transition-transform duration-300 max-h-screen overflow-hidden flex-col flex ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0'
         }`}
       >
         {sidebar}
@@ -214,4 +248,6 @@ export default function Sidebar({
     </>
   );
 }
+
+export default memo(Sidebar);
 
