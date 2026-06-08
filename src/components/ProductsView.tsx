@@ -130,6 +130,7 @@ function ProductsView({
             key={product.id}
             product={product}
             pages={pages}
+            hidePageBadge={!!defaultPageId}
             onDelete={onDelete}
             onEdit={handleEditProduct}
           />

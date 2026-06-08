@@ -8,11 +8,12 @@ const formatPrice = (price: number) =>
 interface ProductCardProps {
   product: Product;
   pages: Page[];
+  hidePageBadge?: boolean;
   onDelete: (id: string) => void;
   onEdit: (product: Product) => void;
 }
 
-function ProductCard({ product, pages, onDelete, onEdit }: ProductCardProps) {
+function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit }: ProductCardProps) {
   const [imageError, setImageError] = useState(false);
 
   const discount = useMemo(
@@ -54,7 +55,7 @@ function ProductCard({ product, pages, onDelete, onEdit }: ProductCardProps) {
           </div>
         )}
 
-        {page && (
+        {page && !hidePageBadge && (
           <div
             className="absolute top-2 sm:top-3 right-2 sm:right-3 text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full bg-white/90 backdrop-blur-sm border hidden sm:block"
             style={{ borderColor: `${page.color}40`, color: page.color }}
@@ -80,16 +81,11 @@ function ProductCard({ product, pages, onDelete, onEdit }: ProductCardProps) {
       </div>
 
       <div className="flex flex-col flex-1 p-3 sm:p-4 gap-2 sm:gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-slate-400 uppercase tracking-wide line-clamp-1">
-            {product.category}
-          </span>
-          {product.company && (
-            <span className="inline-flex items-center text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-              {product.company}
-            </span>
-          )}
-        </div>
+        {product.company && (
+          <div className="text-xs text-slate-500 truncate" title={product.company}>
+            {product.company}
+          </div>
+        )}
         <h3 className="text-sm font-semibold text-slate-800 leading-snug line-clamp-2 flex-1">
           {product.name}
         </h3>
