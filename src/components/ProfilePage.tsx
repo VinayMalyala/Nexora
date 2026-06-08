@@ -164,7 +164,7 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
+    <>
       {showAvatarLightbox && avatarSource && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm"
@@ -186,6 +186,7 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
           </div>
         </div>
       )}
+      <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="max-w-4xl mx-auto">
         <div className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5 mb-6">
@@ -195,12 +196,19 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
                     {(isEditing ? form.name : currentUser.name).slice(0, 1).toUpperCase()}
                   </div>
                 ) : (
-                  <img
-                    src={avatarSource}
-                    alt={`${currentUser.name} avatar`}
-                    onError={() => setAvatarLoadError(true)}
-                    className="w-20 h-20 rounded-3xl object-cover bg-slate-100"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAvatarLightbox(true)}
+                    className="focus:outline-none focus:ring-2 focus:ring-amber-400 rounded-3xl"
+                    title="Click to view full image"
+                  >
+                    <img
+                      src={avatarSource}
+                      alt={`${currentUser.name} avatar`}
+                      onError={() => setAvatarLoadError(true)}
+                      className="w-20 h-20 rounded-3xl object-cover bg-slate-100 hover:opacity-90 transition-opacity cursor-pointer"
+                    />
+                  </button>
                 )}
               <div>
                 <p className="text-2xl font-bold text-slate-900">{isEditing ? form.name : currentUser.name}</p>
@@ -394,5 +402,6 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
         </div>
       </div>
     </div>
+    </>
   );
 }

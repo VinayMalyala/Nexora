@@ -233,10 +233,10 @@ function Sidebar({
                 src={profileAvatarSrc}
                 alt="Profile avatar"
                 onError={() => setAvatarLoadError(true)}
-                className="w-4 h-4 rounded-full object-cover"
+                className="w-7 h-7 rounded-full object-cover"
               />
             ) : currentUserName.trim() ? (
-              <span className="inline-flex w-4 h-4 rounded-full bg-slate-200 text-[10px] font-semibold text-slate-700 items-center justify-center">
+              <span className="inline-flex w-7 h-7 rounded-full bg-slate-200 text-xs font-semibold text-slate-700 items-center justify-center">
                 {currentUserName.trim().slice(0, 1).toUpperCase()}
               </span>
             ) : (

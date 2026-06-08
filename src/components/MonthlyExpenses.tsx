@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PlusCircle, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Expense, Product } from '../types';
@@ -31,6 +31,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [productId, setProductId] = useState<string | ''>('');
   const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -63,18 +64,25 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
     };
   }, [userId]);
 
-  const addExpense = async () => {
+  const addExpense = useCallback(async () => {
     if (!name && !productId) return;
     if (!price || price <= 0) return;
+    if (submitting) return;
+
+    // Construct date in local timezone to avoid UTC midnight shift bucketing into wrong month.
+    const [y, mo, d] = date.split('-').map(Number);
+    const localDate = new Date(y, mo - 1, d).toISOString();
 
     const expensePayload = {
       user_id: userId,
       name: name || (products.find(p => p.id === productId)?.name ?? 'Item'),
       price: Number(price),
-      date: new Date(date).toISOString(),
+      date: localDate,
       product_id: productId || null,
       notes: notes || '',
     };
+
+    setSubmitting(true);
 
     const { data, error: insertError } = await supabase
       .from('expenses')
@@ -84,6 +92,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
 
     if (insertError) {
       setError(insertError.message);
+      setSubmitting(false);
       return;
     }
 
@@ -93,9 +102,10 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
     setPrice('');
     setProductId('');
     setNotes('');
-  };
+    setSubmitting(false);
+  }, [date, name, notes, price, productId, products, submitting, userId]);
 
-  const deleteExpense = async (id: string) => {
+  const deleteExpense = useCallback(async (id: string) => {
     if (!confirm('Delete this expense?')) return;
 
     const { error: deleteError } = await supabase
@@ -111,7 +121,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
 
     setError('');
     setExpenses(prev => prev.filter(e => e.id !== id));
-  };
+  }, [userId]);
 
   const groupedByMonth = useMemo(() => {
     const map = new Map<string, Expense[]>();
@@ -208,8 +218,12 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
             <input value={notes} onChange={e => setNotes(e.target.value)} className="w-full rounded-md border px-3 py-2 mb-3" />
 
             <div className="flex gap-2">
-              <button onClick={addExpense} className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500 hover:bg-amber-600 text-white">
-                <PlusCircle size={16} /> Add
+              <button
+                onClick={() => void addExpense()}
+                disabled={submitting}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500 hover:bg-amber-600 disabled:opacity-60 disabled:cursor-not-allowed text-white"
+              >
+                <PlusCircle size={16} /> {submitting ? 'Adding...' : 'Add'}
               </button>
               <button onClick={() => {
                 setName(''); setPrice(''); setProductId(''); setNotes(''); setDate(new Date().toISOString().slice(0,10));
@@ -244,7 +258,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-sm font-semibold">₹{e.price.toFixed(2)}</div>
-                        <button onClick={() => deleteExpense(e.id)} className="p-2 rounded text-slate-400 hover:text-red-500">
+                        <button onClick={() => void deleteExpense(e.id)} className="p-2 rounded text-slate-400 hover:text-red-500">
                           <Trash2 size={16} />
                         </button>
                       </div>

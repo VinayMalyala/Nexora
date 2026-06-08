@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import type { Product } from '../types';
 
 interface PriceTrackerProps {
@@ -6,7 +6,7 @@ interface PriceTrackerProps {
   loading: boolean;
 }
 
-function ProductAvatar({ product }: { product: Product }) {
+const ProductAvatar = memo(function ProductAvatar({ product }: { product: Product }) {
   if (product.image_url) {
     return (
       <img src={product.image_url} alt={product.name} className="w-12 h-12 rounded-md object-cover" />
@@ -18,20 +18,24 @@ function ProductAvatar({ product }: { product: Product }) {
       {product.name?.slice(0, 1).toUpperCase()}
     </div>
   );
-}
+});
 
 export default function PriceTracker({ products, loading }: PriceTrackerProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [amount, setAmount] = useState<number | ''>('');
   const [unit, setUnit] = useState<'g' | 'kg' | 'ml' | 'l'>('g');
   const [manualPrice, setManualPrice] = useState<number | ''>('');
+  const [copied, setCopied] = useState(false);
 
   const selectedProduct: Product | undefined = useMemo(
     () => products.find(p => p.id === selectedId),
     [products, selectedId]
   );
 
-  const priceToUse = manualPrice !== '' ? manualPrice : selectedProduct?.price ?? 0;
+  // Allow result computation when manual price is set, even without a selected product.
+  const effectivePrice = manualPrice !== '' ? manualPrice : selectedProduct?.price ?? null;
+  const priceToUse = effectivePrice ?? 0;
+  const canCompute = effectivePrice !== null && !!amount && amount > 0;
 
   const normalizedAmount = useMemo(() => {
     if (!amount || amount <= 0) return 0;
@@ -43,6 +47,15 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
     if (!priceToUse || !normalizedAmount) return null;
     return unit === 'l' ? priceToUse / (amount as number) : priceToUse / normalizedAmount;
   }, [priceToUse, normalizedAmount, amount, unit]);
+
+  const handleCopyRate = () => {
+    if (!pricePerUnit) return;
+    const text = `₹${pricePerUnit.toFixed(4)} / ${displayUnit}`;
+    navigator.clipboard?.writeText(text).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    }).catch(() => {});
+  };
 
   const inputDescription = unit === 'g' || unit === 'kg'
     ? 'grams or kilograms'
@@ -174,30 +187,27 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
               <div>
                 <div className="text-sm text-slate-500">Result</div>
                 <div className="mt-2">
-                  {!selectedProduct && <div className="text-sm text-slate-400">Select a product to compute the rate.</div>}
-                  {selectedProduct && (!amount || amount <= 0) && <div className="text-sm text-slate-400">Enter amount to compute the rate.</div>}
-
-                  {selectedProduct && amount && amount > 0 && (
+                  {!canCompute && !selectedProduct && <div className="text-sm text-slate-400">Select a product or enter an override price, then add an amount to compute the rate.</div>}
+                  {canCompute && (
                     <>
                       <div className="text-sm text-slate-500">₹{priceToUse.toFixed(2)} total • {displayAmount} {displayUnit}</div>
-                      <div className="mt-3 text-4xl font-bold text-amber-600">₹{(pricePerUnit ?? 0).toFixed(4)} / {displayUnit}</div>
+                      <div className="mt-3 text-4xl font-bold text-amber-600">
+                        {pricePerUnit !== null ? `₹${pricePerUnit.toFixed(4)} / ${displayUnit}` : '—'}
+                      </div>
                       <div className="mt-1 text-sm text-slate-400">Based on {manualPrice !== '' ? 'overridden price' : 'stored product price'}.</div>
                     </>
                   )}
+                  {!canCompute && selectedProduct && <div className="text-sm text-slate-400">Enter amount to compute the rate.</div>}
                 </div>
               </div>
 
               <div className="flex flex-col items-end gap-3">
                 <button
-                  onClick={() => {
-                    if (pricePerUnit) {
-                      const text = `₹${pricePerUnit.toFixed(4)} / ${displayUnit}`;
-                      navigator.clipboard?.writeText(text);
-                    }
-                  }}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-amber-500 hover:bg-amber-600 text-white text-sm shadow"
+                  onClick={handleCopyRate}
+                  disabled={!pricePerUnit}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm shadow"
                 >
-                  Copy rate
+                  {copied ? 'Copied!' : 'Copy rate'}
                 </button>
                 <div className="text-xs text-slate-400">Tip: smaller units improve precision.</div>
               </div>
