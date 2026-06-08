@@ -193,7 +193,7 @@ function Sidebar({
       <div className="px-4 py-3 border-t border-slate-100 space-y-2">
         <button
           onClick={() => { onNavigate('monthly-expenses'); setMobileOpen(false); }}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150 ${
             activeView === 'monthly-expenses'
               ? 'bg-[#7C4DFF] text-white'
               : 'bg-white text-slate-700 hover:bg-slate-50'
@@ -207,7 +207,7 @@ function Sidebar({
 
         <button
           onClick={() => { onNavigate('price-tracker'); setMobileOpen(false); }}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150 ${
             activeView === 'price-tracker'
               ? 'bg-[#3CC7E6] text-white'
               : 'bg-[#4DDAFF] text-slate-800 hover:bg-[#3CC7E6]'
@@ -221,7 +221,7 @@ function Sidebar({
 
         <button
           onClick={() => { onNavigate('profile'); setMobileOpen(false); }}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150 ${
             activeView === 'profile'
               ? 'bg-amber-50 text-amber-700'
               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'

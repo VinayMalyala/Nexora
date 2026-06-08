@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { PlusCircle, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PlusCircle, Trash2, ChevronLeft, ChevronRight, RefreshCw, Clock, AlertTriangle, TrendingDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Expense, Product } from '../types';
 
@@ -38,23 +38,29 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
 
     const fetchExpenses = async () => {
       setExpensesLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from('expenses')
-        .select('id, user_id, name, price, date, product_id, notes, created_at')
-        .eq('user_id', userId)
-        .order('date', { ascending: false });
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('expenses')
+          .select('id, user_id, name, price, date, product_id, notes, created_at')
+          .eq('user_id', userId)
+          .order('date', { ascending: false });
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      if (fetchError) {
-        setError(fetchError.message);
+        if (fetchError) {
+          setError(fetchError.message);
+          setExpenses([]);
+        } else {
+          setError('');
+          setExpenses((data ?? []) as Expense[]);
+        }
+      } catch (err) {
+        if (!mounted) return;
+        setError(err instanceof Error ? err.message : 'Failed to load expenses. Check your connection.');
         setExpenses([]);
-      } else {
-        setError('');
-        setExpenses((data ?? []) as Expense[]);
+      } finally {
+        if (mounted) setExpensesLoading(false);
       }
-
-      setExpensesLoading(false);
     };
 
     void fetchExpenses();
@@ -69,8 +75,14 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
     if (!price || price <= 0) return;
     if (submitting) return;
 
+    // Validate date before constructing — malformed input would yield NaN.
+    const parts = date.split('-').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) {
+      setError('Invalid date selected. Please choose a valid date.');
+      return;
+    }
+    const [y, mo, d] = parts;
     // Construct date in local timezone to avoid UTC midnight shift bucketing into wrong month.
-    const [y, mo, d] = date.split('-').map(Number);
     const localDate = new Date(y, mo - 1, d).toISOString();
 
     const expensePayload = {
@@ -141,29 +153,96 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
     return keys;
   }, [groupedByMonth]);
 
-  const currentMonthExpenses = groupedByMonth.get(selectedMonth) ?? [];
+  const currentMonthExpenses = useMemo(
+    () => groupedByMonth.get(selectedMonth) ?? [],
+    [groupedByMonth, selectedMonth]
+  );
+
   const selectedMonthDisplay = useMemo(() => {
     const [y, m] = selectedMonth.split('-').map(Number);
     return formatMonthYear(new Date(y, m - 1, 1));
   }, [selectedMonth]);
 
-  const totalForSelected = currentMonthExpenses.reduce((s, e) => s + e.price, 0);
+  const totalForSelected = useMemo(
+    () => currentMonthExpenses.reduce((s, e) => s + e.price, 0),
+    [currentMonthExpenses]
+  );
 
-  const prevMonths = months.filter(k => k !== selectedMonth);
+  const prevMonths = useMemo(
+    () => months.filter(k => k !== selectedMonth),
+    [months, selectedMonth]
+  );
 
-  const goPrev = () => {
-    // move to previous month (earlier)
+  const goPrev = useCallback(() => {
     const [y, m] = selectedMonth.split('-').map(Number);
-    const dt = new Date(y, m - 2, 1); // previous
-    setSelectedMonth(monthKey(dt));
-  };
-  const goNext = () => {
-    const [y, m] = selectedMonth.split('-').map(Number);
-    const dt = new Date(y, m, 1); // next
-    setSelectedMonth(monthKey(dt));
-  };
+    setSelectedMonth(monthKey(new Date(y, m - 2, 1)));
+  }, [selectedMonth]);
 
-  const onSelectMonth = (key: string) => setSelectedMonth(key);
+  const goNext = useCallback(() => {
+    const [y, m] = selectedMonth.split('-').map(Number);
+    setSelectedMonth(monthKey(new Date(y, m, 1)));
+  }, [selectedMonth]);
+
+  const onSelectMonth = useCallback((key: string) => setSelectedMonth(key), []);
+
+  // Restock Insights: only uses expenses that are linked to a product_id
+  const restockInsights = useMemo(() => {
+    // Build O(1) product lookup upfront — avoids O(n) find() inside the loop.
+    const productMap = new Map(products.map(p => [p.id, p.name]));
+
+    const byProduct = new Map<string, Date[]>();
+    expenses.forEach(e => {
+      if (!e.product_id) return;
+      const dates = byProduct.get(e.product_id) ?? [];
+      dates.push(new Date(e.date));
+      byProduct.set(e.product_id, dates);
+    });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const rows: {
+      productId: string;
+      productName: string;
+      lastBought: Date;
+      daysSinceLast: number;
+      avgInterval: number | null;
+      dueSoon: boolean;
+    }[] = [];
+
+    byProduct.forEach((dates, productId) => {
+      // Spread to avoid mutating the original array stored in the Map.
+      const sorted = [...dates].sort((a, b) => b.getTime() - a.getTime());
+      const lastBought = sorted[0];
+
+      // Clamp to 0 — future-dated entries would otherwise produce negative values.
+      const rawDiff = Math.floor((today.getTime() - lastBought.getTime()) / 86400000);
+      const daysSinceLast = Math.max(0, rawDiff);
+
+      let avgInterval: number | null = null;
+      if (sorted.length >= 2) {
+        const intervals: number[] = [];
+        for (let i = 0; i < sorted.length - 1; i++) {
+          const diff = Math.floor((sorted[i].getTime() - sorted[i + 1].getTime()) / 86400000);
+          if (diff > 0) intervals.push(diff);
+        }
+        if (intervals.length > 0) {
+          avgInterval = Math.round(intervals.reduce((a, b) => a + b, 0) / intervals.length);
+        }
+      }
+
+      const dueSoon = avgInterval !== null && daysSinceLast >= avgInterval * 0.8;
+      const productName = productMap.get(productId) ?? 'Unknown product';
+
+      rows.push({ productId, productName, lastBought, daysSinceLast, avgInterval, dueSoon });
+    });
+
+    return rows.sort((a, b) => {
+      // Due-soon products rise to the top; then most days since last purchase.
+      if (a.dueSoon !== b.dueSoon) return a.dueSoon ? -1 : 1;
+      return b.daysSinceLast - a.daysSinceLast;
+    });
+  }, [expenses, products]);
 
   return (
     <div className="p-6 h-full overflow-auto">
@@ -288,6 +367,56 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
                 </div>
               )}
             </div>
+
+            {restockInsights.length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm border p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <RefreshCw size={14} className="text-slate-500" />
+                  <div className="text-sm font-semibold text-slate-700">Restock Insights</div>
+                  <span className="ml-auto text-xs text-slate-400">{restockInsights.length} tracked product{restockInsights.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div className="space-y-2">
+                  {restockInsights.map(row => (
+                    <div
+                      key={row.productId}
+                      className={`flex items-start justify-between p-3 rounded-md border ${row.dueSoon ? 'border-amber-200 bg-amber-50' : 'border-slate-100'}`}
+                    >
+                      <div className="flex items-start gap-2 min-w-0">
+                        {row.dueSoon
+                          ? <AlertTriangle size={13} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                          : <TrendingDown size={13} className="text-slate-400 flex-shrink-0 mt-0.5" />
+                        }
+                        <div className="min-w-0">
+                          <div className="text-xs font-medium text-slate-800 truncate">{row.productName}</div>
+                          <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                            <Clock size={10} />
+                            Last bought {row.daysSinceLast === 0 ? 'today' : `${row.daysSinceLast}d ago`} · {row.lastBought.toLocaleDateString()}
+                          </div>
+                          {row.avgInterval !== null && (
+                            <div className="text-xs text-slate-400 mt-0.5">
+                              Avg every {row.avgInterval} day{row.avgInterval !== 1 ? 's' : ''}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 ml-3">
+                        {row.dueSoon && row.avgInterval !== null ? (
+                          <span className="text-xs font-semibold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                            Due soon
+                          </span>
+                        ) : row.avgInterval !== null ? (
+                          <span className="text-xs text-slate-400 whitespace-nowrap">
+                            {Math.max(0, row.avgInterval - row.daysSinceLast)}d left
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-300 whitespace-nowrap">1 purchase</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

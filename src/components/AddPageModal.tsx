@@ -7,7 +7,7 @@ const PAGE_PRESETS = [
   { name: 'Personal Care', icon: '🌿', color: '#10b981' },
   { name: 'Clothes', icon: '👕', color: '#ec4899' },
   { name: 'Food & Grocery', icon: '🥗', color: '#84cc16' },
-  { name: 'Books', icon: '📚', color: '#8b5cf6' },
+  { name: 'Beauty', icon: '💄', color: '#ec4899' },
   { name: 'Home & Kitchen', icon: '🏠', color: '#06b6d4' },
   { name: 'Sports', icon: '🏃', color: '#f97316' },
 ];
