@@ -24,6 +24,7 @@ export default function AddPageModal({ onClose, onSave }: AddPageModalProps) {
   const [icon, setIcon] = useState('📄');
   const [color, setColor] = useState('#f59e0b');
   const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handlePreset = (p: typeof PAGE_PRESETS[number]) => {
     setName(p.name);
@@ -34,10 +35,17 @@ export default function AddPageModal({ onClose, onSave }: AddPageModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    setSubmitError('');
     setSaving(true);
-    await onSave(name.trim(), icon, color);
-    setSaving(false);
-    onClose();
+    try {
+      await onSave(name.trim(), icon, color);
+      onClose();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create page. Please try again.';
+      setSubmitError(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -108,6 +116,12 @@ export default function AddPageModal({ onClose, onSave }: AddPageModalProps) {
               ))}
             </div>
           </div>
+
+          {submitError ? (
+            <p className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              {submitError}
+            </p>
+          ) : null}
 
           <div className="flex gap-2 sm:gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-2 sm:py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">

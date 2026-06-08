@@ -11,9 +11,64 @@ import { usePages, useProducts } from './hooks/useData';
 import { supabase } from './lib/supabase';
 import type { ViewMode, Product, User } from './types';
 
-type AuthResult =
+type LoginAuthResult =
   | { status: 'success' }
-  | { status: 'missing' | 'invalid' | 'exists'; message?: string };
+  | { status: 'missing' | 'invalid'; message?: string };
+
+type SignupAuthResult =
+  | { status: 'success' }
+  | { status: 'invalid' | 'exists'; message?: string };
+
+type RequiredTable = 'profiles' | 'pages' | 'products' | 'product_tags' | 'expenses';
+
+type TableCheckResult = {
+  table: RequiredTable;
+  status: 'ok' | 'missing' | 'error';
+  detail?: string;
+};
+
+type SchemaHealthState = {
+  status: 'idle' | 'checking' | 'ok' | 'missing' | 'error';
+  results: TableCheckResult[];
+};
+
+const REQUIRED_TABLES: RequiredTable[] = ['profiles', 'pages', 'products', 'product_tags', 'expenses'];
+
+const REQUEST_TIMEOUT_MS = 10000;
+const HEALTH_CHECK_TIMEOUT_MS = 15000;
+
+function withTimeout<T>(promiseLike: PromiseLike<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+
+    Promise.resolve(promiseLike).then(
+      value => {
+        window.clearTimeout(timeoutId);
+        resolve(value);
+      },
+      error => {
+        window.clearTimeout(timeoutId);
+        reject(error);
+      }
+    );
+  });
+}
+
+function toFriendlyAuthErrorMessage(rawMessage: string): string {
+  const msg = rawMessage.toLowerCase();
+
+  if (msg.includes("could not find the table 'public.profiles'") || msg.includes('relation "profiles" does not exist')) {
+    return 'Database setup is incomplete: profiles table is missing. Apply Supabase migrations for this project, then try again.';
+  }
+
+  if (msg.includes('schema cache')) {
+    return 'Database schema is not ready yet. Apply migrations and refresh Supabase schema cache, then retry.';
+  }
+
+  return rawMessage;
+}
 
 type ProfileRow = {
   id: string;
@@ -28,6 +83,7 @@ type ProfileUpdateData = {
   name: string;
   profilePictureUrl: string;
   email: string;
+  phone: string;
   bio: string;
   password?: string;
 };
@@ -116,6 +172,8 @@ function AppContent({
         pages={pages}
         activeView={activeView}
         activePageId={activePageId}
+        currentUserName={currentUser.name}
+        currentUserProfilePictureUrl={currentUser.profilePictureUrl}
         onNavigate={handleNavigate}
         onAddPage={() => setShowAddPage(true)}
         onDeletePage={handleDeletePage}
@@ -147,8 +205,13 @@ function AppContent({
         <AddPageModal
           onClose={() => setShowAddPage(false)}
           onSave={async (name, icon, color) => {
-            const { data } = await addPage(name, icon, color);
-            if (data) handleNavigate('page', data.id);
+            const { data, error } = await addPage(name, icon, color);
+            if (error) {
+              throw new Error(error.message);
+            }
+            if (data) {
+              handleNavigate('page', data.id);
+            }
           }}
         />
       )}
@@ -160,17 +223,30 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [copiedChecklist, setCopiedChecklist] = useState(false);
+  const [schemaHealth, setSchemaHealth] = useState<SchemaHealthState>({
+    status: 'idle',
+    results: [],
+  });
 
   const saveCurrentUser = useCallback((user: User | null) => {
     setCurrentUser(user);
   }, []);
 
   const loadCurrentUser = useCallback(async (authUserId: string, fallbackEmail: string | undefined) => {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id, name, username, profile_picture_url, phone, bio')
-      .eq('id', authUserId)
-      .maybeSingle<ProfileRow>();
+    const { data: profile, error: profileError } = await withTimeout(
+      supabase
+        .from('profiles')
+        .select('id, name, username, profile_picture_url, phone, bio')
+        .eq('id', authUserId)
+        .maybeSingle<ProfileRow>(),
+      REQUEST_TIMEOUT_MS,
+      'Profile lookup timed out. Please check your connection and try again.'
+    );
+
+    if (profileError) {
+      throw new Error(toFriendlyAuthErrorMessage(profileError.message));
+    }
 
     const derivedUsername = fallbackEmail?.split('@')[0] ?? 'user';
     const username = profile?.username ?? derivedUsername;
@@ -178,14 +254,22 @@ export default function App() {
     if (!profile) {
       const defaultName = derivedUsername;
       const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(defaultName)}&background=f59e0b&color=fff`;
-      await supabase.from('profiles').upsert({
-        id: authUserId,
-        username,
-        name: defaultName,
-        profile_picture_url: avatar,
-        phone: '',
-        bio: 'This user has not set a bio yet.',
-      });
+      const { error: upsertError } = await withTimeout(
+        supabase.from('profiles').upsert({
+          id: authUserId,
+          username,
+          name: defaultName,
+          profile_picture_url: avatar,
+          phone: '',
+          bio: 'This user has not set a bio yet.',
+        }),
+        REQUEST_TIMEOUT_MS,
+        'Profile setup timed out. Please try again.'
+      );
+
+      if (upsertError) {
+        throw new Error(toFriendlyAuthErrorMessage(upsertError.message));
+      }
 
       return {
         id: authUserId,
@@ -210,42 +294,145 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let canceled = false;
+
+    const runSchemaHealthCheck = async () => {
+      setSchemaHealth({
+        status: 'checking',
+        results: REQUIRED_TABLES.map(table => ({ table, status: 'ok' })),
+      });
+
+      const checkTable = async (table: RequiredTable): Promise<TableCheckResult> => {
+        try {
+          const { error } = await withTimeout(
+            supabase.from(table).select('id', { head: true, count: 'exact' }).limit(1),
+            HEALTH_CHECK_TIMEOUT_MS,
+            `Health check timed out for table: ${table}`
+          );
+
+          if (!error) {
+            return { table, status: 'ok' };
+          }
+
+          const lower = error.message.toLowerCase();
+          const isMissing =
+            lower.includes(`public.${table}`) && lower.includes('could not find the table') ||
+            lower.includes(`relation \"${table}\" does not exist`) ||
+            lower.includes(`relation '${table}' does not exist`);
+
+          return {
+            table,
+            status: isMissing ? 'missing' : 'error',
+            detail: error.message,
+          };
+        } catch (error) {
+          return {
+            table,
+            status: 'error',
+            detail: error instanceof Error ? error.message : 'Unknown table check error',
+          };
+        }
+      };
+
+      const checks = await Promise.all(
+        REQUIRED_TABLES.map(async table => {
+          let result = await checkTable(table);
+          if (result.status === 'error' && result.detail?.toLowerCase().includes('timed out')) {
+            await new Promise(resolve => window.setTimeout(resolve, 900));
+            result = await checkTable(table);
+          }
+
+          return result;
+        })
+      );
+
+      if (canceled) return;
+
+      const hasMissing = checks.some(result => result.status === 'missing');
+      const hasError = checks.some(result => result.status === 'error');
+
+      setSchemaHealth({
+        status: hasMissing ? 'missing' : hasError ? 'error' : 'ok',
+        results: checks,
+      });
+    };
+
+    void runSchemaHealthCheck();
+
+    return () => {
+      canceled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
+    let bootstrapFinished = false;
+
+    const startupWatchdog = window.setTimeout(() => {
+      if (!mounted || bootstrapFinished) return;
+      console.warn('Auth bootstrap timed out. Falling back to login view.');
+      saveCurrentUser(null);
+      setAuthMode('login');
+      setAuthLoading(false);
+    }, 7000);
 
     const bootstrap = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (error || !mounted) {
-        setAuthLoading(false);
-        return;
-      }
+      try {
+        const { data, error } = await withTimeout(
+          supabase.auth.getSession(),
+          REQUEST_TIMEOUT_MS,
+          'Session check timed out. Please reload and try again.'
+        );
+        if (error || !mounted) {
+          setAuthLoading(false);
+          return;
+        }
 
-      if (data.session?.user) {
-        const user = await loadCurrentUser(data.session.user.id, data.session.user.email);
-        if (mounted) saveCurrentUser(user);
+        if (data.session?.user) {
+          const user = await loadCurrentUser(data.session.user.id, data.session.user.email);
+          if (mounted) saveCurrentUser(user);
+        }
+      } catch (error) {
+        console.error('Failed to bootstrap auth session:', error);
+        if (mounted) {
+          saveCurrentUser(null);
+          setAuthMode('login');
+        }
+      } finally {
+        bootstrapFinished = true;
+        if (mounted) setAuthLoading(false);
       }
-      if (mounted) setAuthLoading(false);
     };
 
     void bootstrap();
 
-    const { data: authSubscription } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: authSubscription } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      if (!session?.user) {
-        saveCurrentUser(null);
-        setAuthMode('login');
-        setAuthLoading(false);
-        return;
-      }
+      try {
+        if (!session?.user) {
+          // Some non-signed-out events can briefly report null; avoid forcing logout unless explicit.
+          if (event === 'SIGNED_OUT') {
+            saveCurrentUser(null);
+            setAuthMode('login');
+          }
+          setAuthLoading(false);
+          return;
+        }
 
-      const user = await loadCurrentUser(session.user.id, session.user.email);
-      if (mounted) {
-        saveCurrentUser(user);
+        const user = await loadCurrentUser(session.user.id, session.user.email);
+        if (mounted) {
+          saveCurrentUser(user);
+        }
+      } catch (error) {
+        console.error('Auth state change handling failed:', error);
+      } finally {
         setAuthLoading(false);
       }
     });
 
     return () => {
       mounted = false;
+      window.clearTimeout(startupWatchdog);
       authSubscription.subscription.unsubscribe();
     };
   }, [loadCurrentUser, saveCurrentUser]);
@@ -253,90 +440,133 @@ export default function App() {
   const toSyntheticEmail = (username: string) => `${username}@nexora.app`;
 
   const handleLogin = useCallback(
-    async ({ username, password }: { username: string; password: string }) => {
+    async ({ username, password }: { username: string; password: string }): Promise<LoginAuthResult> => {
       const trimmedUsername = username.trim().toLowerCase();
       if (!/^[a-z0-9._-]{3,30}$/.test(trimmedUsername)) {
-        return { status: 'invalid', message: 'Username format is invalid.' } as AuthResult;
+        return { status: 'invalid', message: 'Username format is invalid.' };
       }
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: toSyntheticEmail(trimmedUsername),
-        password,
-      });
+      let data: Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['data'];
+      let error: Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['error'];
+
+      try {
+        const result = await withTimeout(
+          supabase.auth.signInWithPassword({
+            email: toSyntheticEmail(trimmedUsername),
+            password,
+          }),
+          REQUEST_TIMEOUT_MS,
+          'Login request timed out. Please check your connection and try again.'
+        );
+        data = result.data;
+        error = result.error;
+      } catch (requestError) {
+        return {
+          status: 'invalid',
+          message: requestError instanceof Error ? requestError.message : 'Unable to log in right now.',
+        };
+      }
 
       if (error) {
         if (/invalid login credentials|email not confirmed/i.test(error.message)) {
-          return { status: 'invalid', message: 'Invalid username or password.' } as AuthResult;
+          return { status: 'invalid', message: 'Invalid username or password.' };
         }
         return {
           status: 'invalid',
-          message: `Unable to log in right now: ${error.message}`,
-        } as AuthResult;
+          message: `Unable to log in right now: ${toFriendlyAuthErrorMessage(error.message)}`,
+        };
       }
 
       if (!data.user) {
-        return { status: 'missing' } as AuthResult;
+        return { status: 'missing' };
       }
 
-      const user = await loadCurrentUser(data.user.id, data.user.email);
-      saveCurrentUser(user);
-      return { status: 'success' } as AuthResult;
+      try {
+        const user = await loadCurrentUser(data.user.id, data.user.email);
+        saveCurrentUser(user);
+        return { status: 'success' };
+      } catch (profileError) {
+        return {
+          status: 'invalid',
+          message: profileError instanceof Error ? profileError.message : 'Unable to load your profile right now.',
+        };
+      }
     },
     [loadCurrentUser, saveCurrentUser]
   );
 
   const handleSignup = useCallback(
-    async ({ name, username, password }: { name: string; username: string; password: string }) => {
+    async ({ name, username, password }: { name: string; username: string; password: string }): Promise<SignupAuthResult> => {
       const trimmedUsername = username.trim().toLowerCase();
       if (!/^[a-z0-9._-]{3,30}$/.test(trimmedUsername)) {
         return {
           status: 'invalid',
           message: 'Username must be 3-30 chars and use a-z, 0-9, dot, underscore, or hyphen.',
-        } as AuthResult;
+        };
       }
 
       const email = toSyntheticEmail(trimmedUsername);
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username: trimmedUsername,
-            name: name.trim(),
-          },
-        },
-      });
+      let data: Awaited<ReturnType<typeof supabase.auth.signUp>>['data'];
+      let error: Awaited<ReturnType<typeof supabase.auth.signUp>>['error'];
+
+      try {
+        const result = await withTimeout(
+          supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                username: trimmedUsername,
+                name: name.trim(),
+              },
+            },
+          }),
+          REQUEST_TIMEOUT_MS,
+          'Signup request timed out. Please check your connection and try again.'
+        );
+        data = result.data;
+        error = result.error;
+      } catch (requestError) {
+        return {
+          status: 'invalid',
+          message: requestError instanceof Error ? requestError.message : 'Unable to create account right now.',
+        };
+      }
 
       if (error) {
         if (/already registered/i.test(error.message)) {
-          return { status: 'exists' } as AuthResult;
+          return { status: 'exists' };
         }
         return {
           status: 'invalid',
-          message: `Unable to create account: ${error.message}`,
-        } as AuthResult;
+          message: `Unable to create account: ${toFriendlyAuthErrorMessage(error.message)}`,
+        };
       }
 
       const authUser = data.user;
       if (!authUser) {
-        return { status: 'invalid', message: 'Unable to create account session.' } as AuthResult;
+        return { status: 'invalid', message: 'Unable to create account session.' };
       }
 
       const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=f59e0b&color=fff`;
-      const profileError = await supabase.from('profiles').upsert({
-        id: authUser.id,
-        username: trimmedUsername,
-        name: name.trim(),
-        profile_picture_url: avatar,
-        phone: '',
-        bio: 'This user has not set a bio yet.',
-      });
+      const profileError = await withTimeout(
+        supabase.from('profiles').upsert({
+          id: authUser.id,
+          username: trimmedUsername,
+          name: name.trim(),
+          profile_picture_url: avatar,
+          phone: '',
+          bio: 'This user has not set a bio yet.',
+        }),
+        REQUEST_TIMEOUT_MS,
+        'Profile setup timed out. Please try again.'
+      );
 
       if (profileError.error) {
         return {
           status: 'invalid',
-          message: `Account created but profile setup failed: ${profileError.error.message}`,
-        } as AuthResult;
+          message: `Account created but profile setup failed: ${toFriendlyAuthErrorMessage(profileError.error.message)}`,
+        };
       }
 
       saveCurrentUser({
@@ -348,17 +578,17 @@ export default function App() {
         phone: '',
         bio: 'This user has not set a bio yet.',
       });
-      return { status: 'success' } as AuthResult;
+      return { status: 'success' };
     },
     [saveCurrentUser]
   );
 
   const handleLogout = useCallback(() => {
     void supabase.auth.signOut();
-  }, [saveCurrentUser]);
+  }, []);
 
   const handleUpdateProfile = useCallback(
-    async ({ name, profilePictureUrl, email, bio, password }: ProfileUpdateData) => {
+    async ({ name, profilePictureUrl, email, phone, bio, password }: ProfileUpdateData) => {
       if (!currentUser) {
         return { status: 'invalid', message: 'No active user session.' } as const;
       }
@@ -366,11 +596,13 @@ export default function App() {
       const profileUpdates: {
         name: string;
         profile_picture_url: string;
+        phone: string;
         bio: string;
         updated_at: string;
       } = {
         name: name.trim(),
         profile_picture_url: profilePictureUrl.trim(),
+        phone: phone.trim(),
         bio: bio.trim(),
         updated_at: new Date().toISOString(),
       };
@@ -412,6 +644,7 @@ export default function App() {
         ...currentUser,
         name: profileUpdates.name,
         profilePictureUrl: profileUpdates.profile_picture_url,
+        phone: profileUpdates.phone,
         email: nextEmail,
         bio: profileUpdates.bio,
       });
@@ -421,25 +654,114 @@ export default function App() {
     [currentUser, saveCurrentUser]
   );
 
+  const migrationChecklist = useMemo(() => {
+    const missing = schemaHealth.results
+      .filter(result => result.status === 'missing')
+      .map(result => result.table);
+
+    const missingLine = missing.length > 0
+      ? `Missing tables detected: ${missing.join(', ')}`
+      : 'Missing tables detected: none';
+
+    return [
+      'Nexora Supabase Migration Checklist',
+      '',
+      '1. Open Supabase Dashboard > SQL Editor for the same project used by VITE_SUPABASE_URL.',
+      '2. Apply migrations from supabase/migrations in order:',
+      '   - 20260602023338_create_nexora_schema.sql',
+      '   - 20260603025102_add_sort_order_to_products.sql',
+      '   - 20260605120000_add_company_to_products.sql',
+      '   - 20260606100000_add_user_accounts_table.sql',
+      '   - 20260607110000_harden_auth_and_isolation.sql',
+      '3. In Supabase Auth settings, disable email confirmation for this project (for current username flow).',
+      '4. Refresh the app after migrations are complete.',
+      '',
+      missingLine,
+    ].join('\n');
+  }, [schemaHealth.results]);
+
+  const handleCopyChecklist = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(migrationChecklist);
+      setCopiedChecklist(true);
+      window.setTimeout(() => setCopiedChecklist(false), 1800);
+    } catch (error) {
+      console.error('Failed to copy migration checklist:', error);
+    }
+  }, [migrationChecklist]);
+
+  const diagnosticsPanel = schemaHealth.status === 'ok' ? null : (
+    <div className="fixed bottom-4 right-4 z-50 max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+      <h3 className="text-sm font-semibold text-slate-800">Startup Health Check</h3>
+      {schemaHealth.status === 'checking' ? (
+        <p className="mt-1 text-xs text-slate-500">Checking required Supabase tables...</p>
+      ) : null}
+
+      {schemaHealth.status === 'missing' ? (
+        <div className="mt-2">
+          <p className="text-xs text-red-600">Missing tables detected:</p>
+          <ul className="mt-1 list-disc pl-5 text-xs text-slate-700">
+            {schemaHealth.results
+              .filter(result => result.status === 'missing')
+              .map(result => (
+                <li key={result.table}>{result.table}</li>
+              ))}
+          </ul>
+          <p className="mt-2 text-xs text-slate-500">Apply all files from supabase/migrations to this Supabase project.</p>
+          <button
+            type="button"
+            onClick={() => void handleCopyChecklist()}
+            className="mt-2 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700"
+          >
+            {copiedChecklist ? 'Checklist Copied' : 'Copy Checklist'}
+          </button>
+        </div>
+      ) : null}
+
+      {schemaHealth.status === 'error' ? (
+        <div className="mt-2">
+          <p className="text-xs text-amber-600">Could not fully verify schema.</p>
+          <ul className="mt-1 list-disc pl-5 text-xs text-slate-700">
+            {schemaHealth.results
+              .filter(result => result.status === 'error')
+              .map(result => (
+                <li key={result.table}>
+                  {result.table}: {result.detail ?? 'Unknown error'}
+                </li>
+              ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-sm text-slate-500">Preparing your workspace...</p>
-      </div>
+      <>
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+          <p className="text-sm text-slate-500">Preparing your workspace...</p>
+        </div>
+        {diagnosticsPanel}
+      </>
     );
   }
 
   if (!currentUser) {
-    return authMode === 'login' ? (
-      <LoginPage
-        onLogin={handleLogin}
-        onGoToSignup={() => setAuthMode('signup')}
-      />
-    ) : (
-      <SignupPage
-        onSignup={handleSignup}
-        onGoToLogin={() => setAuthMode('login')}
-      />
+    return (
+      <>
+        {authMode === 'login' ? (
+          <LoginPage
+            onLogin={handleLogin}
+            onGoToSignup={() => setAuthMode('signup')}
+          />
+        ) : (
+          <SignupPage
+            onSignup={handleSignup}
+            onGoToLogin={() => setAuthMode('login')}
+          />
+        )}
+        {diagnosticsPanel}
+      </>
     );
   }
 

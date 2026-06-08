@@ -9,7 +9,6 @@ interface PriceTrackerProps {
 function ProductAvatar({ product }: { product: Product }) {
   if (product.image_url) {
     return (
-      // eslint-disable-next-line jsx-a11y/img-redundant-alt
       <img src={product.image_url} alt={product.name} className="w-12 h-12 rounded-md object-cover" />
     );
   }
@@ -136,7 +135,7 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
                   <div className="flex gap-2">
                     <input
                       type="number"
-                      value={amount as any}
+                      value={amount}
                       onChange={event => setAmount(event.target.value === '' ? '' : Number(event.target.value))}
                       placeholder="e.g. 500"
                       className="w-full rounded-md border px-3 py-2 bg-white"
@@ -160,7 +159,7 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
                   <label className="block text-xs font-semibold text-slate-400 mb-2">Override price (optional)</label>
                   <input
                     type="number"
-                    value={manualPrice as any}
+                    value={manualPrice}
                     onChange={event => setManualPrice(event.target.value === '' ? '' : Number(event.target.value))}
                     placeholder="₹"
                     className="w-full rounded-md border px-3 py-2 bg-white"

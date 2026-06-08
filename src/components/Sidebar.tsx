@@ -1,4 +1,4 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 import {
   Home,
   Clock,
@@ -19,6 +19,8 @@ interface SidebarProps {
   pages: Page[];
   activeView: ViewMode;
   activePageId: string | null;
+  currentUserName: string;
+  currentUserProfilePictureUrl: string;
   onNavigate: (view: ViewMode, pageId?: string) => void;
   onAddPage: () => void;
   onDeletePage: (id: string) => void;
@@ -28,6 +30,8 @@ function Sidebar({
   pages,
   activeView,
   activePageId,
+  currentUserName,
+  currentUserProfilePictureUrl,
   onNavigate,
   onAddPage,
   onDeletePage,
@@ -35,6 +39,19 @@ function Sidebar({
   const [pagesExpanded, setPagesExpanded] = useState(true);
   const [hoveredPage, setHoveredPage] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
+
+  const profileAvatarSrc = useMemo(() => {
+    const trimmed = currentUserProfilePictureUrl.trim();
+    if (!trimmed) return '';
+    if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
+    if (trimmed.startsWith('//')) return `https:${trimmed}`;
+    return `https://${trimmed}`;
+  }, [currentUserProfilePictureUrl]);
+
+  useEffect(() => {
+    setAvatarLoadError(false);
+  }, [profileAvatarSrc]);
 
   const navItem = (
     icon: React.ReactNode,
@@ -211,7 +228,20 @@ function Sidebar({
           }`}
         >
           <span className={`flex-shrink-0 ${activeView === 'profile' ? 'text-amber-600' : 'text-slate-400 group-hover:text-slate-600'}`}>
-            <User size={16} />
+            {profileAvatarSrc && !avatarLoadError ? (
+              <img
+                src={profileAvatarSrc}
+                alt="Profile avatar"
+                onError={() => setAvatarLoadError(true)}
+                className="w-4 h-4 rounded-full object-cover"
+              />
+            ) : currentUserName.trim() ? (
+              <span className="inline-flex w-4 h-4 rounded-full bg-slate-200 text-[10px] font-semibold text-slate-700 items-center justify-center">
+                {currentUserName.trim().slice(0, 1).toUpperCase()}
+              </span>
+            ) : (
+              <User size={16} />
+            )}
           </span>
           <span className="flex-1 text-left">Profile</span>
         </button>

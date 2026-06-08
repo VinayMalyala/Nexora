@@ -29,13 +29,19 @@ export default function SignupPage({ onSignup, onGoToLogin }: SignupPageProps) {
     setError('');
     setSubmitting(true);
 
-    const result = await onSignup({ name, username, password });
-    setSubmitting(false);
+    try {
+      const result = await onSignup({ name, username, password });
 
-    if (result.status === 'exists') {
-      setError('That username is already taken.');
-    } else if (result.status === 'invalid') {
-      setError(result.message ?? 'Unable to sign up right now.');
+      if (result.status === 'exists') {
+        setError('That username is already taken.');
+      } else if (result.status === 'invalid') {
+        setError(result.message ?? 'Unable to sign up right now.');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to sign up right now.';
+      setError(message);
+    } finally {
+      setSubmitting(false);
     }
   };
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { PlusCircle, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Expense, Product } from '../types';
@@ -199,7 +199,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
             <input value={name} onChange={e => setName(e.target.value)} className="w-full rounded-md border px-3 py-2 mb-3" />
 
             <label className="block text-xs text-slate-500 mb-1">Price (₹)</label>
-            <input type="number" value={price as any} onChange={e => setPrice(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded-md border px-3 py-2 mb-3" />
+            <input type="number" value={price} onChange={e => setPrice(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded-md border px-3 py-2 mb-3" />
 
             <label className="block text-xs text-slate-500 mb-1">Date</label>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full rounded-md border px-3 py-2 mb-3" />

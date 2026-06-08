@@ -24,14 +24,18 @@ export default function LoginPage({ onLogin, onGoToSignup }: LoginPageProps) {
     setError('');
     setSubmitting(true);
 
-    const result = await onLogin({ username, password });
-
-    setSubmitting(false);
-
-    if (result.status === 'missing') {
-      setError('No account found with that username.');
-    } else if (result.status === 'invalid') {
-      setError(result.message ?? 'Invalid username or password.');
+    try {
+      const result = await onLogin({ username, password });
+      if (result.status === 'missing') {
+        setError('No account found with that username.');
+      } else if (result.status === 'invalid') {
+        setError(result.message ?? 'Invalid username or password.');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to log in right now.';
+      setError(message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
