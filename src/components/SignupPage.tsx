@@ -46,39 +46,39 @@ export default function SignupPage({ onSignup, onGoToLogin }: SignupPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl overflow-hidden">
         <div className="px-8 py-10">
           <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-400 text-white mb-6">
             <UserPlus size={24} />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Create your account</h1>
-          <p className="text-sm text-slate-500 mb-6">Sign up with a username and password to get started.</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Create your account</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Sign up with a username and password to get started.</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <label className="block text-sm font-semibold text-slate-700">
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">
               Name
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
                 required
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
+                className="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
                 placeholder="Your full name"
               />
             </label>
 
-            <label className="block text-sm font-semibold text-slate-700">
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">
               Username
               <input
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 required
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
+                className="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
                 placeholder="Choose a username"
               />
             </label>
 
-            <label className="block text-sm font-semibold text-slate-700">
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-200">
               Password
               <input
                 type="password"
@@ -86,7 +86,7 @@ export default function SignupPage({ onSignup, onGoToLogin }: SignupPageProps) {
                 onChange={e => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
+                className="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 px-4 py-3 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
                 placeholder="Create a password (min. 6 characters)"
               />
             </label>
@@ -102,7 +102,7 @@ export default function SignupPage({ onSignup, onGoToLogin }: SignupPageProps) {
             </button>
           </form>
 
-          <div className="mt-6 border-t border-slate-200 pt-5 text-sm text-slate-500">
+          <div className="mt-6 border-t border-slate-200 dark:border-slate-600 pt-5 text-sm text-slate-500 dark:text-slate-400">
             <p>
               Already have an account?{' '}
               <button type="button" onClick={onGoToLogin} className="font-semibold text-amber-500 hover:text-amber-600">

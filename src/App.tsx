@@ -8,6 +8,7 @@ import AddPageModal from './components/AddPageModal';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
 import { usePages, useProducts } from './hooks/useData';
+import { useDarkMode } from './hooks/useDarkMode';
 import { supabase } from './lib/supabase';
 import type { ViewMode, Product, User } from './types';
 
@@ -92,10 +93,14 @@ function AppContent({
   currentUser,
   onLogout,
   onUpdateProfile,
+  isDark,
+  onToggleDark,
 }: {
   currentUser: User;
   onLogout: () => void;
   onUpdateProfile: (data: ProfileUpdateData) => Promise<{ status: 'success' | 'invalid'; message?: string }>;
+  isDark: boolean;
+  onToggleDark: () => void;
 }) {
   const [activeView, setActiveView] = useState<ViewMode>('home');
   const [activePageId, setActivePageId] = useState<string | null>(null);
@@ -167,7 +172,7 @@ function AppContent({
   }, [activeView, products.length]);
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden flex-col sm:flex-row">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden flex-col sm:flex-row">
       <Sidebar
         pages={pages}
         activeView={activeView}
@@ -177,6 +182,8 @@ function AppContent({
         onNavigate={handleNavigate}
         onAddPage={() => setShowAddPage(true)}
         onDeletePage={handleDeletePage}
+        isDark={isDark}
+        onToggleDark={onToggleDark}
       />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -185,7 +192,7 @@ function AppContent({
         ) : activeView === 'monthly-expenses' ? (
           <MonthlyExpenses products={allProducts} loading={loading} userId={currentUser.id} />
         ) : activeView === 'profile' ? (
-          <ProfilePage currentUser={currentUser} onLogout={onLogout} onUpdateProfile={onUpdateProfile} />
+          <ProfilePage currentUser={currentUser} onLogout={onLogout} onUpdateProfile={onUpdateProfile} isDark={isDark} onToggleDark={onToggleDark} />
         ) : (
           <ProductsView
             title={viewTitle}
@@ -224,6 +231,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [copiedChecklist, setCopiedChecklist] = useState(false);
+  const [isDark, toggleDark] = useDarkMode();
   const [schemaHealth, setSchemaHealth] = useState<SchemaHealthState>({
     status: 'idle',
     results: [],
@@ -691,8 +699,8 @@ export default function App() {
   }, [migrationChecklist]);
 
   const diagnosticsPanel = schemaHealth.status === 'ok' ? null : (
-    <div className="fixed bottom-4 right-4 z-50 max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
-      <h3 className="text-sm font-semibold text-slate-800">Startup Health Check</h3>
+    <div className="fixed bottom-4 right-4 z-50 max-w-md rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-lg">
+      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Startup Health Check</h3>
       {schemaHealth.status === 'checking' ? (
         <p className="mt-1 text-xs text-slate-500">Checking required Supabase tables...</p>
       ) : null}
@@ -738,8 +746,8 @@ export default function App() {
   if (authLoading) {
     return (
       <>
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-          <p className="text-sm text-slate-500">Preparing your workspace...</p>
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+          <p className="text-sm text-slate-500 dark:text-slate-400">Preparing your workspace...</p>
         </div>
         {diagnosticsPanel}
       </>
@@ -770,6 +778,8 @@ export default function App() {
       currentUser={currentUser}
       onLogout={handleLogout}
       onUpdateProfile={handleUpdateProfile}
+      isDark={isDark}
+      onToggleDark={toggleDark}
     />
   );
 }

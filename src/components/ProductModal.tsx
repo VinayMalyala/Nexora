@@ -157,7 +157,7 @@ export default memo(function ProductModal({
   const field = useCallback(
     (label: string, key: keyof typeof form, opts?: { type?: string; placeholder?: string; required?: boolean }) => (
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+        <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
           {label} {opts?.required && <span className="text-red-400">*</span>}
         </label>
         <input
@@ -169,7 +169,11 @@ export default memo(function ProductModal({
             setForm(current => ({ ...current, [key]: e.target.value }));
             setErrors(current => ({ ...current, [key]: '' }));
           }}
-          className={`w-full px-3 py-2.5 text-sm rounded-xl border ${errors[key] ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white'} focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors`}
+          className={`w-full px-3 py-2.5 text-sm rounded-xl border ${
+            errors[key]
+              ? 'border-red-300 bg-red-50'
+              : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100'
+          } focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors`}
         />
         {errors[key] && <p className="text-xs text-red-400 mt-1">{errors[key]}</p>}
       </div>
@@ -179,9 +183,9 @@ export default memo(function ProductModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100">
-          <h2 className="text-base font-bold text-slate-800">
+      <div className="bg-white dark:bg-slate-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 dark:border-slate-700">
+          <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">
             {editProduct ? 'Edit Product' : 'Add Product'}
           </h2>
           <button
@@ -202,7 +206,7 @@ export default memo(function ProductModal({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Quantity</label>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Quantity</label>
               <div className="grid grid-cols-[minmax(0,1fr)_90px] gap-2">
                 <input
                   type="number"
@@ -213,12 +217,16 @@ export default memo(function ProductModal({
                     setForm(current => ({ ...current, quantity_value: e.target.value }));
                     setErrors(current => ({ ...current, quantity_value: '' }));
                   }}
-                  className={`w-full px-3 py-2.5 text-sm rounded-xl border ${errors.quantity_value ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white'} focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors`}
+                  className={`w-full px-3 py-2.5 text-sm rounded-xl border ${
+                    errors.quantity_value
+                      ? 'border-red-300 bg-red-50'
+                      : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100'
+                  } focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors`}
                 />
                 <select
                   value={form.quantity_unit}
                   onChange={e => setForm(current => ({ ...current, quantity_unit: e.target.value as 'g' | 'kg' | 'ml' | 'l' }))}
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
                 >
                   <option value="g">g</option>
                   <option value="kg">kg</option>
@@ -227,7 +235,7 @@ export default memo(function ProductModal({
                 </select>
               </div>
               {errors.quantity_value && <p className="text-xs text-red-400 mt-1">{errors.quantity_value}</p>}
-              <p className="text-xs text-slate-400 mt-1">Used by Price Tracker to auto-fill amount and unit.</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Used by Price Tracker to auto-fill amount and unit.</p>
             </div>
 
             {field('Image URL', 'image_url', { placeholder: 'https://...' })}
@@ -236,11 +244,11 @@ export default memo(function ProductModal({
             {field('Company', 'company', { placeholder: 'Brand or manufacturer (optional)' })}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Category</label>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Category</label>
               <select
                 value={form.category}
                 onChange={e => setForm(current => ({ ...current, category: e.target.value }))}
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
               >
                 {CATEGORIES.map(c => (
                   <option key={c} value={c}>{c}</option>
@@ -249,11 +257,11 @@ export default memo(function ProductModal({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Page</label>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Page</label>
               <select
                 value={form.page_id}
                 onChange={e => setForm(current => ({ ...current, page_id: e.target.value }))}
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
               >
                 <option value="">No page</option>
                 {pages.map(p => (
@@ -263,7 +271,7 @@ export default memo(function ProductModal({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Tags</label>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Tags</label>
               <div className="flex gap-2">
                 <input
                   value={tagInput}
@@ -292,12 +300,12 @@ export default memo(function ProductModal({
                     }
                   }}
                   placeholder="shampoo, organic..."
-                  className="flex-1 px-3 py-2.5 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
+                  className="flex-1 px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={addTag}
-                  className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors flex-shrink-0"
+                  className="px-3 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-xl transition-colors flex-shrink-0"
                 >
                   <Plus size={16} />
                 </button>
@@ -318,18 +326,18 @@ export default memo(function ProductModal({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Notes</label>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Notes</label>
               <textarea
                 value={form.notes}
                 onChange={e => setForm(current => ({ ...current, notes: e.target.value }))}
                 placeholder="Any personal notes..."
                 rows={2}
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors resize-none"
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors resize-none"
               />
             </div>
           </div>
 
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 flex gap-2 sm:gap-3">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 dark:border-slate-700 flex gap-2 sm:gap-3">
             {submitError ? (
               <p className="w-full text-xs text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
                 {submitError}
@@ -341,7 +349,7 @@ export default memo(function ProductModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 sm:py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+              className="flex-1 py-2 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
             >
               Cancel
             </button>

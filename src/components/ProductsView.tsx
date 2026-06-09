@@ -98,14 +98,14 @@ function ProductsView({
     <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-5">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-slate-100 overflow-hidden animate-pulse">
-            <div className="h-[120px] sm:h-[150px] bg-slate-100" />
+          <div key={i} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden animate-pulse">
+            <div className="h-[120px] sm:h-[150px] bg-slate-100 dark:bg-slate-700" />
             <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
-              <div className="h-3 bg-slate-100 rounded w-1/3" />
-              <div className="h-4 bg-slate-100 rounded w-4/5" />
-              <div className="h-4 bg-slate-100 rounded w-3/5" />
-              <div className="h-6 bg-slate-100 rounded w-1/3" />
-              <div className="h-8 sm:h-9 bg-slate-100 rounded-xl" />
+              <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded w-1/3" />
+              <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-4/5" />
+              <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-3/5" />
+              <div className="h-6 bg-slate-100 dark:bg-slate-700 rounded w-1/3" />
+              <div className="h-8 sm:h-9 bg-slate-100 dark:bg-slate-700 rounded-xl" />
             </div>
           </div>
         ))}

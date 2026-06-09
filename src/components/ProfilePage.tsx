@@ -1,10 +1,12 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 import type { User } from '../types';
-import { Mail, Phone, Info, Lock } from 'lucide-react';
+import { Mail, Phone, Info, Lock, Moon, Sun } from 'lucide-react';
 
 interface ProfilePageProps {
   currentUser: User;
   onLogout: () => void;
+  isDark: boolean;
+  onToggleDark: () => void;
   onUpdateProfile: (data: {
     profilePictureUrl: string;
     name: string;
@@ -15,7 +17,7 @@ interface ProfilePageProps {
   }) => Promise<{ status: 'success' | 'invalid'; message?: string }>;
 }
 
-export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: ProfilePageProps) {
+export default function ProfilePage({ currentUser, onLogout, onUpdateProfile, isDark, onToggleDark }: ProfilePageProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -188,7 +190,7 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
       )}
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="max-w-4xl mx-auto">
-        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm p-6 sm:p-8">
+        <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5 mb-6">
             <div className="flex items-center gap-4">
                 {!avatarSource || avatarLoadError ? (
@@ -211,8 +213,8 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
                   </button>
                 )}
               <div>
-                <p className="text-2xl font-bold text-slate-900">{isEditing ? form.name : currentUser.name}</p>
-                <p className="text-sm text-slate-500">@{currentUser.username}</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{isEditing ? form.name : currentUser.name}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">@{currentUser.username}</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -223,7 +225,7 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
                     setError('');
                     setSuccess('');
                   }}
-                  className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                  className="inline-flex items-center justify-center rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-5 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
                 >
                   Edit profile
                 </button>
@@ -231,7 +233,7 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
                 <>
                   <button
                     onClick={handleCancel}
-                    className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                    className="inline-flex items-center justify-center rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-5 py-3 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors"
                   >
                     Cancel
                   </button>
@@ -257,24 +259,44 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
           {success ? <p className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</p> : null}
 
           <div className="grid gap-5 md:grid-cols-2">
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 md:col-span-2">
-              <p className="text-sm font-semibold text-slate-700 mb-3">Username</p>
+            {/* Appearance */}
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-5 md:col-span-2 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-0.5">Appearance</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{isDark ? 'Dark mode is on. Your preference is saved.' : 'Light mode is on.'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={onToggleDark}
+                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-semibold border transition-colors ${
+                  isDark
+                    ? 'bg-slate-800 border-slate-600 text-amber-300 hover:bg-slate-700'
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {isDark ? <Sun size={15} /> : <Moon size={15} />}
+                {isDark ? 'Switch to Light' : 'Switch to Dark'}
+              </button>
+            </div>
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-5 md:col-span-2">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Username</p>
               <input
                 value={`@${currentUser.username}`}
                 disabled
-                className="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-500"
+                className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-800 px-4 py-3 text-sm text-slate-500 dark:text-slate-400"
               />
-              <p className="mt-2 text-xs text-slate-500">Username cannot be edited.</p>
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Username cannot be edited.</p>
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 md:col-span-2">
-              <div className="flex items-center gap-3 text-slate-700 mb-3">
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-5 md:col-span-2">
+              <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200 mb-3">
                 <Info size={18} />
                 <p className="text-sm font-semibold">Profile Picture</p>
               </div>
               {isEditing ? (
                 <div className="space-y-3">
-                  <label className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer">
+                  <label className="inline-flex items-center justify-center rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors cursor-pointer">
                     {uploading ? 'Processing image...' : 'Upload image file'}
                     <input
                       type="file"
@@ -286,18 +308,18 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
                   <input
                     value={form.profilePictureUrl}
                     onChange={e => setForm(current => ({ ...current, profilePictureUrl: e.target.value }))}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
+                    className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
                     placeholder="Or paste image URL (https://...)"
                   />
-                  <p className="text-xs text-slate-500">Upload an image or use an image URL. Max upload size: 2MB.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Upload an image or use an image URL. Max upload size: 2MB.</p>
                 </div>
               ) : (
-                <p className="text-sm text-slate-700 break-all">{getPictureDisplayLabel(currentUser.profilePictureUrl)}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300 break-all">{getPictureDisplayLabel(currentUser.profilePictureUrl)}</p>
               )}
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-              <div className="flex items-center gap-3 text-slate-700 mb-3">
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-5">
+              <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200 mb-3">
                 <Info size={18} />
                 <p className="text-sm font-semibold">Name</p>
               </div>
@@ -305,15 +327,15 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
                 <input
                   value={form.name}
                   onChange={e => setForm(current => ({ ...current, name: e.target.value }))}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
+                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
                 />
               ) : (
-                <p className="text-sm text-slate-700">{currentUser.name}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">{currentUser.name}</p>
               )}
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-              <div className="flex items-center gap-3 text-slate-700 mb-3">
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-5">
+              <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200 mb-3">
                 <Mail size={18} />
                 <p className="text-sm font-semibold">Email</p>
               </div>
@@ -321,16 +343,16 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
                 <input
                   value={form.email}
                   onChange={e => setForm(current => ({ ...current, email: e.target.value }))}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
+                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
                   type="email"
                 />
               ) : (
-                <p className="text-sm text-slate-700">{currentUser.email}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">{currentUser.email}</p>
               )}
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-              <div className="flex items-center gap-3 text-slate-700 mb-3">
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-5">
+              <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200 mb-3">
                 <Phone size={18} />
                 <p className="text-sm font-semibold">Phone</p>
               </div>
@@ -340,14 +362,14 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
                   onChange={e => setForm(current => ({ ...current, phone: e.target.value }))}
                   type="tel"
                   placeholder="+91 00000 00000"
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
+                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
                 />
               ) : (
-                <p className="text-sm text-slate-700">{currentUser.phone || 'Not set'}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">{currentUser.phone || 'Not set'}</p>
               )}
             </div>
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 md:col-span-2">
-              <div className="flex items-center gap-3 text-slate-700 mb-3">
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-5 md:col-span-2">
+              <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200 mb-3">
                 <Info size={18} />
                 <p className="text-sm font-semibold">Bio</p>
               </div>
@@ -356,17 +378,17 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
                   value={form.bio}
                   onChange={e => setForm(current => ({ ...current, bio: e.target.value }))}
                   rows={4}
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 resize-none"
+                  className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30 resize-none"
                 />
               ) : (
-                <p className="text-sm text-slate-700 leading-relaxed">{currentUser.bio}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{currentUser.bio}</p>
               )}
             </div>
 
             {isEditing ? (
               <>
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                  <div className="flex items-center gap-3 text-slate-700 mb-3">
+                <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-5">
+                  <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200 mb-3">
                     <Lock size={18} />
                     <p className="text-sm font-semibold">New Password</p>
                   </div>
@@ -375,12 +397,12 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
                     onChange={e => setForm(current => ({ ...current, password: e.target.value }))}
                     type="password"
                     placeholder="Leave empty to keep current password"
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
+                    className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
                   />
                 </div>
 
-                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                  <div className="flex items-center gap-3 text-slate-700 mb-3">
+                <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-5">
+                  <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200 mb-3">
                     <Lock size={18} />
                     <p className="text-sm font-semibold">Confirm Password</p>
                   </div>
@@ -389,14 +411,14 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile }: 
                     onChange={e => setForm(current => ({ ...current, confirmPassword: e.target.value }))}
                     type="password"
                     placeholder="Re-enter new password"
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
+                    className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/30"
                   />
                 </div>
               </>
             ) : null}
 
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 md:col-span-2">
-              <p className="text-xs text-slate-500">Only profile picture, name, email, bio, and password are editable. Username is read-only.</p>
+            <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-5 md:col-span-2">
+              <p className="text-xs text-slate-500 dark:text-slate-400">Only profile picture, name, email, bio, and password are editable. Username is read-only.</p>
             </div>
           </div>
         </div>

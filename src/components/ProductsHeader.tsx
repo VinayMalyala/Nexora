@@ -72,12 +72,12 @@ function ProductsHeader({
   const activeFiltersCount = (activeCategory ? 1 : 0) + (activePage ? 1 : 0) + (activeTag ? 1 : 0) + (activeCompany ? 1 : 0);
 
   return (
-    <div className="bg-white border-b border-slate-100 px-4 sm:px-6 lg:px-8 py-3 sm:py-5">
+    <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700 px-4 sm:px-6 lg:px-8 py-3 sm:py-5">
       <div className="flex flex-col gap-3 sm:gap-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg sm:text-xl font-bold text-slate-800 truncate">{title}</h2>
-            <p className="text-xs sm:text-sm text-slate-400 mt-0.5 truncate">{subtitle}</p>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100 truncate">{title}</h2>
+            <p className="text-xs sm:text-sm text-slate-400 dark:text-slate-500 mt-0.5 truncate">{subtitle}</p>
           </div>
           <button
             onClick={onAddProduct}
@@ -96,7 +96,7 @@ function ProductsHeader({
             <input
               placeholder="Search..."
               onChange={e => onSearch(e.target.value)}
-              className="pl-8 sm:pl-9 pr-3 sm:pr-4 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
+              className="pl-8 sm:pl-9 pr-3 sm:pr-4 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 dark:text-slate-100 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
             />
           </div>
           <div className="relative">
@@ -105,7 +105,7 @@ function ProductsHeader({
               className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-medium rounded-xl border transition-colors flex-shrink-0 ${
                 showFilters || activeFiltersCount > 0
                   ? 'bg-amber-50 border-amber-200 text-amber-700'
-                  : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
               <SlidersHorizontal size={13} className="sm:w-3.5 sm:h-3.5" />
@@ -125,11 +125,11 @@ function ProductsHeader({
               className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm"
               onClick={() => setShowFilters(false)}
             />
-            <div className="relative w-full max-w-3xl mx-4 sm:mx-6 mb-4 sm:mb-6 bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
-              <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100">
+            <div className="relative w-full max-w-3xl mx-4 sm:mx-6 mb-4 sm:mb-6 bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-700">
                 <div>
-                  <h3 className="text-base font-semibold text-slate-900">Filter products</h3>
-                  <p className="text-xs text-slate-500 mt-1">Choose one or more filters and apply them to the page.</p>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Filter products</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Choose one or more filters and apply them to the page.</p>
                 </div>
                 <button
                   onClick={() => setShowFilters(false)}
@@ -141,12 +141,12 @@ function ProductsHeader({
 
               <div className="p-4 sm:p-6 space-y-5 overflow-y-auto">
                 <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-semibold text-slate-400">Category</span>
+                  <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Category</span>
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => setPendingCategory('')}
                       className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                        !pendingCategory ? 'bg-amber-400 text-white border-amber-400' : 'border-slate-200 text-slate-600 hover:border-amber-300'
+                        !pendingCategory ? 'bg-amber-400 text-white border-amber-400' : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-amber-300'
                       }`}
                     >
                       All
@@ -156,7 +156,7 @@ function ProductsHeader({
                         key={c}
                         onClick={() => setPendingCategory(c === pendingCategory ? '' : c)}
                         className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                          pendingCategory === c ? 'bg-amber-400 text-white border-amber-400' : 'border-slate-200 text-slate-600 hover:border-amber-300'
+                          pendingCategory === c ? 'bg-amber-400 text-white border-amber-400' : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-amber-300'
                         }`}
                       >
                         {c.split(' ')[0]}
@@ -235,40 +235,40 @@ function ProductsHeader({
                             </button>
                           ))
                         ) : (
-                          <p className="px-3 py-2 text-xs text-slate-500">No matching company found.</p>
+                          <p className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400">No matching company found.</p>
                         )}
                       </div>
 
                       {pendingCompany && (
-                        <p className="text-xs text-slate-500">
-                          Selected: <span className="font-medium text-slate-700">{pendingCompany}</span>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Selected: <span className="font-medium text-slate-700 dark:text-slate-200">{pendingCompany}</span>
                         </p>
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-500">No companies available to filter.</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">No companies available to filter.</p>
                   )}
                 </div>
 
                 {availableTags.length > 0 && (
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-xs font-semibold text-slate-400">Tags</span>
+                    <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Tags</span>
                     <div className="relative">
                       <button
                         onClick={() => setShowTagDropdown(!showTagDropdown)}
-                        className="flex items-center gap-2 px-3 py-2 text-xs border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors w-full text-left"
+                        className="flex items-center gap-2 px-3 py-2 text-xs border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors w-full text-left"
                       >
                         <Tag size={12} />
                         <span className="flex-1">{pendingTag ? `Tag: ${pendingTag}` : 'Select a tag...'}</span>
                       </button>
                       {showTagDropdown && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
                           <button
                             onClick={() => {
                               setPendingTag('');
                               setShowTagDropdown(false);
                             }}
-                            className={`w-full px-3 py-2 text-xs text-left hover:bg-slate-100 transition-colors ${!pendingTag ? 'bg-amber-50' : ''}`}
+                            className={`w-full px-3 py-2 text-xs text-left hover:bg-slate-100 dark:hover:bg-slate-600 dark:text-slate-300 transition-colors ${!pendingTag ? 'bg-amber-50 dark:bg-amber-900/20' : ''}`}
                           >
                             Clear Tag Filter
                           </button>
@@ -279,8 +279,8 @@ function ProductsHeader({
                                 setPendingTag(tag === pendingTag ? '' : tag);
                                 setShowTagDropdown(false);
                               }}
-                              className={`w-full px-3 py-2 text-xs text-left hover:bg-slate-100 transition-colors flex items-center gap-2 ${
-                                pendingTag === tag ? 'bg-amber-50 font-semibold' : ''
+                              className={`w-full px-3 py-2 text-xs text-left hover:bg-slate-100 dark:hover:bg-slate-600 dark:text-slate-300 transition-colors flex items-center gap-2 ${
+                                pendingTag === tag ? 'bg-amber-50 dark:bg-amber-900/20 font-semibold' : ''
                               }`}
                             >
                               <Tag size={10} />
@@ -294,7 +294,7 @@ function ProductsHeader({
                 )}
               </div>
 
-              <div className="px-4 sm:px-6 py-3 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="px-4 sm:px-6 py-3 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -304,7 +304,7 @@ function ProductsHeader({
                     setPendingCompany('');
                     setShowTagDropdown(false);
                   }}
-                  className="text-xs text-slate-500 hover:text-slate-700 transition-colors"
+                  className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                 >
                   Clear all selections
                 </button>

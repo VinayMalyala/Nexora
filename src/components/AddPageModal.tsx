@@ -50,10 +50,10 @@ export default function AddPageModal({ onClose, onSave }: AddPageModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100">
-          <h2 className="text-base font-bold text-slate-800">New Page</h2>
-          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+      <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 dark:border-slate-700">
+          <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">New Page</h2>
+          <button onClick={onClose} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -61,7 +61,7 @@ export default function AddPageModal({ onClose, onSave }: AddPageModalProps) {
         <form onSubmit={handleSubmit} className="px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5">
           {/* Presets */}
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2.5">Quick Presets</p>
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2.5">Quick Presets</p>
             <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
               {PAGE_PRESETS.map(p => (
                 <button
@@ -69,7 +69,7 @@ export default function AddPageModal({ onClose, onSave }: AddPageModalProps) {
                   type="button"
                   onClick={() => handlePreset(p)}
                   className={`flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-medium transition-all ${
-                    name === p.name ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                    name === p.name ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 text-slate-600 dark:text-slate-300'
                   }`}
                 >
                   <span className="text-lg">{p.icon}</span>
@@ -82,28 +82,28 @@ export default function AddPageModal({ onClose, onSave }: AddPageModalProps) {
           {/* Custom */}
           <div className="flex gap-2 sm:gap-3">
             <div className="w-16 sm:w-20">
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Icon</label>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Icon</label>
               <input
                 value={icon}
                 onChange={e => setIcon(e.target.value)}
                 maxLength={2}
-                className="w-full px-2 py-2.5 text-center text-xl rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400"
+                className="w-full px-2 py-2.5 text-center text-xl rounded-xl border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400"
               />
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Page Name <span className="text-red-400">*</span></label>
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Page Name <span className="text-red-400">*</span></label>
               <input
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="e.g. Birthday List"
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
               />
             </div>
           </div>
 
           {/* Color */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-2">Accent Color</label>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">Accent Color</label>
             <div className="flex gap-2 flex-wrap">
               {COLORS.map(c => (
                 <button
@@ -124,7 +124,8 @@ export default function AddPageModal({ onClose, onSave }: AddPageModalProps) {
           ) : null}
 
           <div className="flex gap-2 sm:gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-2 sm:py-2.5 rounded-xl border border-slate-200 text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+            <button
+              type="button" onClick={onClose} className="flex-1 py-2 sm:py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
               Cancel
             </button>
             <button

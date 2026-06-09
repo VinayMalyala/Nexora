@@ -33,7 +33,7 @@ function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit }: Produc
   const handleEdit = useCallback(() => onEdit(product), [onEdit, product]);
 
   return (
-    <div className="group bg-white rounded-2xl border border-slate-100 shadow-sm transition-all duration-200 overflow-hidden flex flex-col hover:shadow-lg">
+    <div className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-all duration-200 overflow-hidden flex flex-col hover:shadow-lg">
       <div className="relative bg-white h-[120px] sm:h-[150px] overflow-hidden">
         {!imageError && product.image_url ? (
           <img
@@ -44,7 +44,7 @@ function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit }: Produc
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <ShoppingBag size={40} className="text-slate-200 sm:w-12 sm:h-12" />
+            <ShoppingBag size={40} className="text-slate-200 dark:text-slate-600 sm:w-12 sm:h-12" />
           </div>
         )}
 
@@ -67,13 +67,13 @@ function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit }: Produc
         <div className="absolute bottom-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <button
             onClick={handleEdit}
-            className="p-1.5 bg-white rounded-lg shadow-sm border border-slate-100 text-slate-500 hover:text-amber-600 hover:border-amber-200 transition-colors"
+            className="p-1.5 bg-white dark:bg-slate-700 rounded-lg shadow-sm border border-slate-100 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:text-amber-600 hover:border-amber-200 transition-colors"
           >
             <Edit3 size={13} />
           </button>
           <button
             onClick={handleDelete}
-            className="p-1.5 bg-white rounded-lg shadow-sm border border-slate-100 text-slate-500 hover:text-red-500 hover:border-red-200 transition-colors"
+            className="p-1.5 bg-white dark:bg-slate-700 rounded-lg shadow-sm border border-slate-100 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors"
           >
             <Trash2 size={13} />
           </button>
@@ -82,23 +82,23 @@ function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit }: Produc
 
       <div className="flex flex-col flex-1 p-3 sm:p-4 gap-2 sm:gap-3">
         {product.company && (
-          <div className="text-xs text-slate-500 truncate" title={product.company}>
+          <div className="text-xs text-slate-500 dark:text-slate-400 truncate" title={product.company}>
             {product.company}
           </div>
         )}
-        <h3 className="text-sm font-semibold text-slate-800 leading-snug line-clamp-2 flex-1">
+        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug line-clamp-2 flex-1">
           {product.name}
         </h3>
         {product.quantity_value && product.quantity_unit && (
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
             Qty: {product.quantity_value} {product.quantity_unit}
           </div>
         )}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2">
-            <span className="text-base sm:text-lg font-bold text-slate-900">{formatPrice(product.price)}</span>
+            <span className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">{formatPrice(product.price)}</span>
             {product.original_price && product.original_price > product.price && (
-              <span className="text-xs text-slate-400 line-through">
+              <span className="text-xs text-slate-400 dark:text-slate-500 line-through">
                 {formatPrice(product.original_price)}
               </span>
             )}
@@ -109,19 +109,19 @@ function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit }: Produc
             {product.tags.slice(0, 2).map(tag => (
               <span
                 key={tag}
-                className="inline-flex items-center gap-0.5 text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full"
+                className="inline-flex items-center gap-0.5 text-xs bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full"
               >
                 <Tag size={8} />
                 {tag}
               </span>
             ))}
             {product.tags.length > 2 && (
-              <span className="text-xs text-slate-400 px-1.5 py-0.5">+{product.tags.length - 2}</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500 px-1.5 py-0.5">+{product.tags.length - 2}</span>
             )}
           </div>
         )}
         {product.notes && (
-          <p className="text-xs text-slate-400 line-clamp-1">{product.notes}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1">{product.notes}</p>
         )}
         {product.product_url && (
           <a
