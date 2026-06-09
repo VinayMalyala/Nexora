@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PlusCircle, Trash2, ChevronLeft, ChevronRight, RefreshCw, Clock, AlertTriangle, TrendingDown, ChevronDown } from 'lucide-react';
+import { PlusCircle, Trash2, ChevronLeft, ChevronRight, RefreshCw, Clock, AlertTriangle, TrendingDown, ChevronDown, CalendarDays } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Expense, Product } from '../types';
 
@@ -86,6 +86,43 @@ function toISTDayNumber(dateLike: Date | string) {
   return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
 }
 
+function parseInputDate(dateInput: string) {
+  const parts = dateInput.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) {
+    return null;
+  }
+
+  const [year, month, day] = parts;
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+
+  return { year, month, day };
+}
+
+function toInputDate(year: number, month: number, day: number) {
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function daysInMonth(year: number, month: number) {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+function shiftYearMonth(year: number, month: number, delta: number) {
+  const totalMonths = year * 12 + (month - 1) + delta;
+  const nextYear = Math.floor(totalMonths / 12);
+  const nextMonth = ((totalMonths % 12) + 12) % 12 + 1;
+  return { year: nextYear, month: nextMonth };
+}
+
+function formatInputDateDisplay(dateInput: string) {
+  const parsed = parseInputDate(dateInput);
+  if (!parsed) return 'Select date';
+  return IST_DATE_FORMATTER.format(new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day, 12, 0, 0)));
+}
+
+const CALENDAR_WEEK_DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+
 type ProductOption = {
   value: string;
   label: string;
@@ -154,6 +191,260 @@ function StyledProductDropdown({
               <span className="block truncate">{option.label}</span>
             </button>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StyledDatePicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [showMonthYearPicker, setShowMonthYearPicker] = useState(false);
+  const initialView = useMemo(() => parseInputDate(value) ?? parseInputDate(currentISTDateInput()), [value]);
+  const [viewYear, setViewYear] = useState(initialView?.year ?? 2026);
+  const [viewMonth, setViewMonth] = useState(initialView?.month ?? 1);
+
+  const selected = useMemo(() => parseInputDate(value), [value]);
+  const today = useMemo(() => parseInputDate(currentISTDateInput()), []);
+
+  useEffect(() => {
+    if (!open) return;
+    const selectedDate = parseInputDate(value);
+    if (selectedDate) {
+      setViewYear(selectedDate.year);
+      setViewMonth(selectedDate.month);
+    }
+  }, [open, value]);
+
+  useEffect(() => {
+    if (!open) {
+      setShowMonthYearPicker(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, []);
+
+  const monthTitle = IST_MONTH_YEAR_FORMATTER.format(new Date(Date.UTC(viewYear, viewMonth - 1, 1, 12, 0, 0)));
+  const monthNames = useMemo(
+    () => Array.from({ length: 12 }, (_, index) =>
+      new Intl.DateTimeFormat('en-IN', { month: 'short', timeZone: IST_TIME_ZONE }).format(
+        new Date(Date.UTC(2000, index, 1, 12, 0, 0))
+      )
+    ),
+    []
+  );
+
+  const leadingEmpty = (() => {
+    const firstDay = new Date(Date.UTC(viewYear, viewMonth - 1, 1)).getUTCDay();
+    return firstDay === 0 ? 6 : firstDay - 1;
+  })();
+
+  const currentMonthDays = daysInMonth(viewYear, viewMonth);
+  const previousMonth = shiftYearMonth(viewYear, viewMonth, -1);
+  const previousMonthDays = daysInMonth(previousMonth.year, previousMonth.month);
+
+  const cells = Array.from({ length: 42 }, (_, index) => {
+    const dayOffset = index - leadingEmpty + 1;
+
+    if (dayOffset < 1) {
+      return {
+        date: toInputDate(previousMonth.year, previousMonth.month, previousMonthDays + dayOffset),
+        dayLabel: previousMonthDays + dayOffset,
+        inCurrentMonth: false,
+      };
+    }
+
+    if (dayOffset > currentMonthDays) {
+      const nextMonth = shiftYearMonth(viewYear, viewMonth, 1);
+      return {
+        date: toInputDate(nextMonth.year, nextMonth.month, dayOffset - currentMonthDays),
+        dayLabel: dayOffset - currentMonthDays,
+        inCurrentMonth: false,
+      };
+    }
+
+    return {
+      date: toInputDate(viewYear, viewMonth, dayOffset),
+      dayLabel: dayOffset,
+      inCurrentMonth: true,
+    };
+  });
+
+  const yesterdayInput = useMemo(() => {
+    if (!today) return currentISTDateInput();
+    const utcNoon = Date.UTC(today.year, today.month - 1, today.day, 12, 0, 0);
+    const yesterday = new Date(utcNoon - 86400000);
+    return toInputDate(yesterday.getUTCFullYear(), yesterday.getUTCMonth() + 1, yesterday.getUTCDate());
+  }, [today]);
+
+  return (
+    <div ref={rootRef} className="relative mb-3">
+      <button
+        type="button"
+        onClick={() => setOpen(current => !current)}
+        className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 pl-3 pr-10 py-2 bg-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400"
+      >
+        <span className="block text-slate-700 dark:text-slate-200">{formatInputDateDisplay(value)}</span>
+        <CalendarDays size={15} className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
+        <ChevronDown
+          size={16}
+          className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-xl p-3">
+          <div className="flex items-center justify-between mb-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (showMonthYearPicker) {
+                  setViewYear(current => current - 1);
+                  return;
+                }
+                const previous = shiftYearMonth(viewYear, viewMonth, -1);
+                setViewYear(previous.year);
+                setViewMonth(previous.month);
+              }}
+              className="p-1.5 rounded-md text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowMonthYearPicker(current => !current)}
+              className="px-2 py-1 rounded-md text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600"
+            >
+              {monthTitle}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (showMonthYearPicker) {
+                  setViewYear(current => current + 1);
+                  return;
+                }
+                const next = shiftYearMonth(viewYear, viewMonth, 1);
+                setViewYear(next.year);
+                setViewMonth(next.month);
+              }}
+              className="p-1.5 rounded-md text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          {showMonthYearPicker ? (
+            <div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mb-2 text-center">Select month and year</div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {monthNames.map((monthName, index) => {
+                  const isActiveMonth = viewMonth === index + 1;
+                  return (
+                    <button
+                      key={`${viewYear}-${monthName}`}
+                      type="button"
+                      onClick={() => {
+                        setViewMonth(index + 1);
+                        setShowMonthYearPicker(false);
+                      }}
+                      className={`h-8 rounded-md text-xs font-medium transition-colors ${
+                        isActiveMonth
+                          ? 'bg-amber-500 text-white'
+                          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600'
+                      }`}
+                    >
+                      {monthName}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-2 text-center text-xs text-slate-500 dark:text-slate-400">{viewYear}</div>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-7 gap-1 mb-1">
+                {CALENDAR_WEEK_DAYS.map(day => (
+                  <div key={day} className="text-[10px] font-semibold uppercase tracking-wide text-center text-slate-400 dark:text-slate-500 py-1">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-1">
+                {cells.map(cell => {
+                  const parsedCell = parseInputDate(cell.date);
+                  const isSelected = selected?.year === parsedCell?.year
+                    && selected?.month === parsedCell?.month
+                    && selected?.day === parsedCell?.day;
+                  const isToday = today?.year === parsedCell?.year
+                    && today?.month === parsedCell?.month
+                    && today?.day === parsedCell?.day;
+
+                  return (
+                    <button
+                      key={cell.date}
+                      type="button"
+                      onClick={() => {
+                        onChange(cell.date);
+                        setOpen(false);
+                      }}
+                      className={`h-8 rounded-md text-xs font-medium transition-colors ${
+                        isSelected
+                          ? 'bg-amber-500 text-white'
+                          : isToday
+                            ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                            : cell.inCurrentMonth
+                              ? 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600'
+                              : 'text-slate-300 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-600'
+                      }`}
+                    >
+                      {cell.dayLabel}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onChange(currentISTDateInput());
+                setOpen(false);
+              }}
+              className="flex-1 rounded-md border border-slate-200 dark:border-slate-600 px-2 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600"
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onChange(yesterdayInput);
+                setOpen(false);
+              }}
+              className="flex-1 rounded-md border border-slate-200 dark:border-slate-600 px-2 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600"
+            >
+              Yesterday
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -471,7 +762,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
             <input type="number" value={price} onChange={e => setPrice(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 mb-3" />
 
             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Date</label>
-            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 mb-3" />
+            <StyledDatePicker value={date} onChange={setDate} />
 
             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Notes</label>
             <input
