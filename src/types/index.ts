@@ -11,6 +11,8 @@ export interface Product {
   name: string;
   price: number;
   original_price: number | null;
+  quantity_value: number | null;
+  quantity_unit: 'g' | 'kg' | 'ml' | 'l' | null;
   image_url: string;
   category: string;
   page_id: string | null;

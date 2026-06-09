@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { ShoppingCart, X, Plus } from 'lucide-react';
 import type { Product } from '../types';
 
@@ -34,6 +34,12 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
     () => products.find(p => p.id === selectedId),
     [products, selectedId]
   );
+
+  useEffect(() => {
+    if (!selectedProduct?.quantity_value || !selectedProduct.quantity_unit) return;
+    setAmount(selectedProduct.quantity_value);
+    setUnit(selectedProduct.quantity_unit);
+  }, [selectedProduct]);
 
   // Allow result computation when manual price is set, even without a selected product.
   const effectivePrice = manualPrice !== '' ? manualPrice : selectedProduct?.price ?? null;
@@ -148,6 +154,9 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
                   <div className="flex-1">
                     <div className="text-sm font-medium text-slate-800 truncate">{product.name}</div>
                     <div className="text-xs text-slate-500">₹{product.price.toFixed(2)}</div>
+                    {product.quantity_value && product.quantity_unit && (
+                      <div className="text-xs text-slate-400">{product.quantity_value} {product.quantity_unit}</div>
+                    )}
                   </div>
                 </button>
               ))}
@@ -166,6 +175,9 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
                         <div>
                           <div className="text-sm font-medium text-slate-800">{selectedProduct.name}</div>
                           <div className="text-xs text-slate-500">Stored price: ₹{selectedProduct.price.toFixed(2)}</div>
+                          {selectedProduct.quantity_value && selectedProduct.quantity_unit ? (
+                            <div className="text-xs text-amber-700">Stored quantity: {selectedProduct.quantity_value} {selectedProduct.quantity_unit}</div>
+                          ) : null}
                         </div>
                       </>
                     ) : (

@@ -12,6 +12,8 @@ function mapProductRow(row: SupabaseProductRow): Product {
     name: row.name,
     price: row.price,
     original_price: row.original_price ?? null,
+    quantity_value: row.quantity_value ?? null,
+    quantity_unit: row.quantity_unit ?? null,
     image_url: row.image_url,
     category: row.category,
     page_id: row.page_id,
@@ -166,6 +168,8 @@ export function useProducts(userId?: string | null) {
       const next: Product = {
         ...(data as Product),
         company: data.company ?? '',
+        quantity_value: data.quantity_value ?? null,
+        quantity_unit: (data.quantity_unit as Product['quantity_unit']) ?? null,
         tags,
       };
       setProducts(prev => [next, ...prev]);

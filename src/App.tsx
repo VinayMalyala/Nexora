@@ -161,7 +161,7 @@ function AppContent({
   const viewSubtitle = useMemo(() => {
     if (activeView === 'home') return `${products.length} products`;
     if (activeView === 'recents') return 'Your 20 most recently added';
-    if (activeView === 'price-tracker') return 'Calculate price per gram for your products';
+    if (activeView === 'price-tracker') return 'Calculate price per unit for your products';
     if (activeView === 'profile') return 'View and manage your profile details';
     return `${products.length} products in this page`;
   }, [activeView, products.length]);

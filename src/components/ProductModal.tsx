@@ -19,6 +19,8 @@ const EMPTY_FORM = {
   name: '',
   price: '',
   original_price: '',
+  quantity_value: '',
+  quantity_unit: 'g',
   image_url: '',
   category: 'Personal Care',
   page_id: '',
@@ -44,6 +46,8 @@ export default memo(function ProductModal({
             name: editProduct.name,
             price: String(editProduct.price),
             original_price: editProduct.original_price ? String(editProduct.original_price) : '',
+            quantity_value: editProduct.quantity_value ? String(editProduct.quantity_value) : '',
+            quantity_unit: editProduct.quantity_unit ?? 'g',
             image_url: editProduct.image_url,
             category: editProduct.category,
             page_id: editProduct.page_id ?? defaultPageId ?? '',
@@ -78,9 +82,12 @@ export default memo(function ProductModal({
     const e: Record<string, string> = {};
     if (!form.name.trim()) e.name = 'Product name is required';
     if (!form.price || isNaN(Number(form.price)) || Number(form.price) < 0) e.price = 'Valid price required';
+    if (form.quantity_value && (isNaN(Number(form.quantity_value)) || Number(form.quantity_value) <= 0)) {
+      e.quantity_value = 'Quantity must be greater than 0';
+    }
     if (!form.product_url.trim()) e.product_url = 'Product link is required';
     return e;
-  }, [form.name, form.price, form.product_url]);
+  }, [form.name, form.price, form.product_url, form.quantity_value]);
 
   const parseTags = useCallback((value: string) => {
     return value
@@ -111,6 +118,8 @@ export default memo(function ProductModal({
             name: form.name.trim(),
             price: Number(form.price),
             original_price: form.original_price ? Number(form.original_price) : null,
+            quantity_value: form.quantity_value ? Number(form.quantity_value) : null,
+            quantity_unit: form.quantity_value ? (form.quantity_unit as Product['quantity_unit']) : null,
             image_url: form.image_url.trim(),
             category: form.category,
             page_id: form.page_id || null,
@@ -190,6 +199,35 @@ export default memo(function ProductModal({
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {field('Current Price (₹)', 'price', { type: 'number', required: true, placeholder: '0' })}
               {field('Original / MRP (₹)', 'original_price', { type: 'number', placeholder: 'Optional' })}
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Quantity</label>
+              <div className="grid grid-cols-[minmax(0,1fr)_90px] gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  placeholder="e.g. 500"
+                  value={form.quantity_value}
+                  onChange={e => {
+                    setForm(current => ({ ...current, quantity_value: e.target.value }));
+                    setErrors(current => ({ ...current, quantity_value: '' }));
+                  }}
+                  className={`w-full px-3 py-2.5 text-sm rounded-xl border ${errors.quantity_value ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white'} focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors`}
+                />
+                <select
+                  value={form.quantity_unit}
+                  onChange={e => setForm(current => ({ ...current, quantity_unit: e.target.value as 'g' | 'kg' | 'ml' | 'l' }))}
+                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
+                >
+                  <option value="g">g</option>
+                  <option value="kg">kg</option>
+                  <option value="ml">ml</option>
+                  <option value="l">l</option>
+                </select>
+              </div>
+              {errors.quantity_value && <p className="text-xs text-red-400 mt-1">{errors.quantity_value}</p>}
+              <p className="text-xs text-slate-400 mt-1">Used by Price Tracker to auto-fill amount and unit.</p>
             </div>
 
             {field('Image URL', 'image_url', { placeholder: 'https://...' })}

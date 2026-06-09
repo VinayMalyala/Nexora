@@ -89,6 +89,11 @@ function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit }: Produc
         <h3 className="text-sm font-semibold text-slate-800 leading-snug line-clamp-2 flex-1">
           {product.name}
         </h3>
+        {product.quantity_value && product.quantity_unit && (
+          <div className="text-xs text-slate-500">
+            Qty: {product.quantity_value} {product.quantity_unit}
+          </div>
+        )}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2">
             <span className="text-base sm:text-lg font-bold text-slate-900">{formatPrice(product.price)}</span>
