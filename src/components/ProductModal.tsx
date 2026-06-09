@@ -1,7 +1,80 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { X, Plus, Tag, Loader2 } from 'lucide-react';
+import { X, Plus, Tag, Loader2, ChevronDown } from 'lucide-react';
 import type { Product, Page } from '../types';
 import { CATEGORIES } from '../types';
+
+type DropdownOption = {
+  value: string;
+  label: string;
+};
+
+function StyledDropdown({
+  value,
+  options,
+  onChange,
+  compact = false,
+}: {
+  value: string;
+  options: DropdownOption[];
+  onChange: (value: string) => void;
+  compact?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, []);
+
+  const activeLabel = options.find(option => option.value === value)?.label ?? options[0]?.label ?? '';
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(current => !current)}
+        className={`w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 ${
+          compact ? 'pl-3 pr-8 py-2.5 text-sm text-left' : 'pl-3 pr-10 py-2.5 text-sm text-left'
+        }`}
+      >
+        {activeLabel}
+        <ChevronDown
+          size={16}
+          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 transition-transform ${compact ? 'right-2.5' : 'right-3'} ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-lg">
+          {options.map(option => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+              className={`w-full px-3 py-2 text-sm text-left transition-colors ${
+                option.value === value
+                  ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium'
+                  : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface ProductModalProps {
   pages: Page[];
@@ -154,6 +227,29 @@ export default memo(function ProductModal({
     setTagInput('');
   }, [parseTags, tagInput]);
 
+  const quantityUnitOptions = useMemo<DropdownOption[]>(
+    () => [
+      { value: 'g', label: 'g' },
+      { value: 'kg', label: 'kg' },
+      { value: 'ml', label: 'ml' },
+      { value: 'l', label: 'l' },
+    ],
+    []
+  );
+
+  const categoryOptions = useMemo<DropdownOption[]>(
+    () => CATEGORIES.map(category => ({ value: category, label: category })),
+    []
+  );
+
+  const pageOptions = useMemo<DropdownOption[]>(
+    () => [
+      { value: '', label: 'No page' },
+      ...pages.map(page => ({ value: page.id, label: `${page.icon} ${page.name}` })),
+    ],
+    [pages]
+  );
+
   const field = useCallback(
     (label: string, key: keyof typeof form, opts?: { type?: string; placeholder?: string; required?: boolean }) => (
       <div>
@@ -223,16 +319,12 @@ export default memo(function ProductModal({
                       : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100'
                   } focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors`}
                 />
-                <select
+                <StyledDropdown
+                  compact
                   value={form.quantity_unit}
-                  onChange={e => setForm(current => ({ ...current, quantity_unit: e.target.value as 'g' | 'kg' | 'ml' | 'l' }))}
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
-                >
-                  <option value="g">g</option>
-                  <option value="kg">kg</option>
-                  <option value="ml">ml</option>
-                  <option value="l">l</option>
-                </select>
+                  options={quantityUnitOptions}
+                  onChange={value => setForm(current => ({ ...current, quantity_unit: value as 'g' | 'kg' | 'ml' | 'l' }))}
+                />
               </div>
               {errors.quantity_value && <p className="text-xs text-red-400 mt-1">{errors.quantity_value}</p>}
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Used by Price Tracker to auto-fill amount and unit.</p>
@@ -245,29 +337,20 @@ export default memo(function ProductModal({
 
             <div>
               <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Category</label>
-              <select
+              <StyledDropdown
                 value={form.category}
-                onChange={e => setForm(current => ({ ...current, category: e.target.value }))}
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
-              >
-                {CATEGORIES.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+                options={categoryOptions}
+                onChange={value => setForm(current => ({ ...current, category: value }))}
+              />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Page</label>
-              <select
+              <StyledDropdown
                 value={form.page_id}
-                onChange={e => setForm(current => ({ ...current, page_id: e.target.value }))}
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
-              >
-                <option value="">No page</option>
-                {pages.map(p => (
-                  <option key={p.id} value={p.id}>{`${p.icon} ${p.name}`}</option>
-                ))}
-              </select>
+                options={pageOptions}
+                onChange={value => setForm(current => ({ ...current, page_id: value }))}
+              />
             </div>
 
             <div>

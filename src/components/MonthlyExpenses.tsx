@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { PlusCircle, Trash2, ChevronLeft, ChevronRight, RefreshCw, Clock, AlertTriangle, TrendingDown } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { PlusCircle, Trash2, ChevronLeft, ChevronRight, RefreshCw, Clock, AlertTriangle, TrendingDown, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Expense, Product } from '../types';
 
@@ -84,6 +84,80 @@ function shiftMonthKey(monthKey: string, delta: number) {
 function toISTDayNumber(dateLike: Date | string) {
   const { year, month, day } = getISTDateParts(dateLike);
   return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
+}
+
+type ProductOption = {
+  value: string;
+  label: string;
+  disabled?: boolean;
+};
+
+function StyledProductDropdown({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: ProductOption[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, []);
+
+  const activeLabel = options.find(option => option.value === value)?.label ?? options[0]?.label ?? '';
+
+  return (
+    <div ref={rootRef} className="relative mb-3">
+      <button
+        type="button"
+        onClick={() => setOpen(current => !current)}
+        className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 pl-3 pr-9 py-2 bg-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400"
+      >
+        <span className="block truncate">{activeLabel}</span>
+        <ChevronDown
+          size={16}
+          className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-lg">
+          {options.map(option => (
+            <button
+              key={`${option.value || 'empty'}-${option.label}`}
+              type="button"
+              onClick={() => {
+                if (option.disabled) return;
+                onChange(option.value);
+                setOpen(false);
+              }}
+              disabled={option.disabled}
+              className={`w-full px-3 py-2 text-sm text-left transition-colors ${
+                option.disabled
+                  ? 'text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                  : option.value === value
+                    ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium'
+                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600'
+              }`}
+            >
+              <span className="block truncate">{option.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function MonthlyExpenses({ products, loading, userId }: MonthlyExpensesProps) {
@@ -268,6 +342,32 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
 
   const onSelectMonth = useCallback((key: string) => setSelectedMonth(key), []);
 
+  const productOptions = useMemo<ProductOption[]>(() => {
+    const options: ProductOption[] = [{ value: '', label: '-- Select from saved products --' }];
+    if (loading) {
+      options.push({ value: '__loading__', label: 'Loading...', disabled: true });
+      return options;
+    }
+
+    products.forEach(product => {
+      options.push({
+        value: product.id,
+        label: `${product.name} — ₹${product.price}`,
+      });
+    });
+
+    return options;
+  }, [loading, products]);
+
+  const handleProductSelect = useCallback((nextProductId: string) => {
+    setProductId(nextProductId);
+    const selectedProduct = products.find(product => product.id === nextProductId);
+    if (selectedProduct) {
+      setName(selectedProduct.name);
+      setPrice(selectedProduct.price);
+    }
+  }, [products]);
+
   // Restock Insights: only uses expenses that are linked to a product_id
   const restockInsights = useMemo(() => {
     // Build O(1) product lookup upfront — avoids O(n) find() inside the loop.
@@ -350,24 +450,11 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
             </p>
 
             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Saved Product (optional)</label>
-            <select
+            <StyledProductDropdown
               value={productId}
-              onChange={(e) => {
-                setProductId(e.target.value);
-                const p = products.find(pp => pp.id === e.target.value);
-                if (p) {
-                  setName(p.name);
-                  setPrice(p.price);
-                }
-              }}
-              className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 bg-white mb-3"
-            >
-              <option value="">-- Select from saved products --</option>
-              {loading && <option disabled>Loading...</option>}
-              {!loading && products.map(p => (
-                <option key={p.id} value={p.id}>{p.name} — ₹{p.price}</option>
-              ))}
-            </select>
+              options={productOptions}
+              onChange={handleProductSelect}
+            />
             <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
               Leave this empty to add a manual item.
             </p>

@@ -1,5 +1,5 @@
-import { memo, useEffect, useMemo, useState } from 'react';
-import { ShoppingCart, X, Plus } from 'lucide-react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { ShoppingCart, X, Plus, ChevronDown } from 'lucide-react';
 import type { Product } from '../types';
 
 interface PriceTrackerProps {
@@ -20,6 +20,75 @@ const ProductAvatar = memo(function ProductAvatar({ product }: { product: Produc
     </div>
   );
 });
+
+type UnitOption = {
+  value: 'g' | 'kg' | 'ml' | 'l';
+  label: string;
+};
+
+function StyledUnitDropdown({
+  value,
+  options,
+  onChange,
+}: {
+  value: UnitOption['value'];
+  options: UnitOption[];
+  onChange: (value: UnitOption['value']) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, []);
+
+  const activeLabel = options.find(option => option.value === value)?.label ?? value;
+
+  return (
+    <div ref={rootRef} className="relative min-w-[78px]">
+      <button
+        type="button"
+        onClick={() => setOpen(current => !current)}
+        className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 pl-3 pr-8 py-2 bg-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400"
+      >
+        {activeLabel}
+        <ChevronDown
+          size={16}
+          className={`pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-lg">
+          {options.map(option => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+              className={`w-full px-3 py-2 text-sm text-left transition-colors ${
+                option.value === value
+                  ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium'
+                  : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function PriceTracker({ products, loading }: PriceTrackerProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -119,6 +188,16 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
 
   const bestValue = comparisonRows[0];
 
+  const unitOptions = useMemo<UnitOption[]>(
+    () => [
+      { value: 'g', label: 'g' },
+      { value: 'kg', label: 'kg' },
+      { value: 'ml', label: 'ml' },
+      { value: 'l', label: 'l' },
+    ],
+    []
+  );
+
   return (
     <div className="p-6 h-full overflow-auto bg-slate-50 dark:bg-slate-950">
       <div className="max-w-7xl mx-auto">
@@ -197,16 +276,7 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
                       className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 bg-white"
                       min={0}
                     />
-                    <select
-                      value={unit}
-                      onChange={event => setUnit(event.target.value as 'g' | 'kg' | 'ml' | 'l')}
-                      className="rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 bg-white text-sm"
-                    >
-                      <option value="g">g</option>
-                      <option value="kg">kg</option>
-                      <option value="ml">ml</option>
-                      <option value="l">l</option>
-                    </select>
+                    <StyledUnitDropdown value={unit} options={unitOptions} onChange={setUnit} />
                   </div>
                   <div className="text-xs text-slate-400 dark:text-slate-500 mt-2">Enter total amount for comparison ({inputDescription}).</div>
                 </div>
