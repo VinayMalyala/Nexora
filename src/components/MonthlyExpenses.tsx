@@ -25,15 +25,15 @@ const IST_MONTH_YEAR_FORMATTER = new Intl.DateTimeFormat('en-IN', {
   year: 'numeric',
 });
 
-const IST_DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-IN', {
-  timeZone: IST_TIME_ZONE,
-  dateStyle: 'medium',
-  timeStyle: 'short',
-});
-
 const IST_DATE_FORMATTER = new Intl.DateTimeFormat('en-IN', {
   timeZone: IST_TIME_ZONE,
   dateStyle: 'medium',
+});
+
+const IST_TIME_FORMATTER = new Intl.DateTimeFormat('en-IN', {
+  timeZone: IST_TIME_ZONE,
+  hour: 'numeric',
+  minute: '2-digit',
 });
 
 function getISTDateParts(dateLike: Date | string) {
@@ -141,8 +141,14 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
   }, [userId]);
 
   const addExpense = useCallback(async () => {
-    if (!name && !productId) return;
-    if (!price || price <= 0) return;
+    if (!name.trim() && !productId) {
+      setError('Please select a saved product or enter an item name (e.g. Apples).');
+      return;
+    }
+    if (!price || price <= 0) {
+      setError('Please enter a valid price greater than 0.');
+      return;
+    }
     if (submitting) return;
 
     // Validate date before constructing — malformed input would yield NaN.
@@ -339,8 +345,11 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="col-span-1 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
             <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Add Purchase</div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              You can track items not listed in cards too, like apples, vegetables, fuel, etc.
+            </p>
 
-            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Product (optional)</label>
+            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Saved Product (optional)</label>
             <select
               value={productId}
               onChange={(e) => {
@@ -353,15 +362,23 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
               }}
               className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 bg-white mb-3"
             >
-              <option value="">-- Select product --</option>
+              <option value="">-- Select from saved products --</option>
               {loading && <option disabled>Loading...</option>}
               {!loading && products.map(p => (
                 <option key={p.id} value={p.id}>{p.name} — ₹{p.price}</option>
               ))}
             </select>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
+              Leave this empty to add a manual item.
+            </p>
 
-            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Name</label>
-            <input value={name} onChange={e => setName(e.target.value)} className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 mb-3" />
+            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Item Name</label>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="e.g. Apples"
+              className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 mb-3"
+            />
 
             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Price (₹)</label>
             <input type="number" value={price} onChange={e => setPrice(e.target.value === '' ? '' : Number(e.target.value))} className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 mb-3" />
@@ -370,7 +387,12 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
             <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 mb-3" />
 
             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Notes</label>
-            <input value={notes} onChange={e => setNotes(e.target.value)} className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 mb-3" />
+            <input
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="e.g. 1kg fruits"
+              className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 mb-3"
+            />
 
             <div className="flex gap-2">
               <button
@@ -410,7 +432,11 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
                     <div key={e.id} className="flex items-center justify-between p-3 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700">
                       <div>
                         <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{e.name}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">{IST_DATE_TIME_FORMATTER.format(new Date(e.date))} • {e.notes}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          {IST_DATE_FORMATTER.format(new Date(e.date))}
+                          {e.created_at ? ` • Added ${IST_TIME_FORMATTER.format(new Date(e.created_at))}` : ''}
+                          {e.notes ? ` • ${e.notes}` : ''}
+                        </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-sm font-semibold dark:text-slate-100">₹{e.price.toFixed(2)}</div>
