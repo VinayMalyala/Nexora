@@ -9,12 +9,81 @@ interface MonthlyExpensesProps {
   userId: string;
 }
 
-function formatMonthYear(date: Date) {
-  return date.toLocaleString(undefined, { month: 'long', year: 'numeric' });
+const IST_TIME_ZONE = 'Asia/Kolkata';
+const IST_OFFSET_MINUTES = 5 * 60 + 30;
+
+const IST_DATE_PARTS_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  timeZone: IST_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+const IST_MONTH_YEAR_FORMATTER = new Intl.DateTimeFormat('en-IN', {
+  timeZone: IST_TIME_ZONE,
+  month: 'long',
+  year: 'numeric',
+});
+
+const IST_DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-IN', {
+  timeZone: IST_TIME_ZONE,
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+
+const IST_DATE_FORMATTER = new Intl.DateTimeFormat('en-IN', {
+  timeZone: IST_TIME_ZONE,
+  dateStyle: 'medium',
+});
+
+function getISTDateParts(dateLike: Date | string) {
+  const date = typeof dateLike === 'string' ? new Date(dateLike) : dateLike;
+  const parts = IST_DATE_PARTS_FORMATTER.formatToParts(date);
+
+  const year = Number(parts.find(p => p.type === 'year')?.value);
+  const month = Number(parts.find(p => p.type === 'month')?.value);
+  const day = Number(parts.find(p => p.type === 'day')?.value);
+
+  return { year, month, day };
 }
 
-function monthKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+function monthKeyFromIST(dateLike: Date | string) {
+  const { year, month } = getISTDateParts(dateLike);
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+function formatISTMonthYearFromKey(monthKey: string) {
+  const [year, month] = monthKey.split('-').map(Number);
+  return IST_MONTH_YEAR_FORMATTER.format(new Date(Date.UTC(year, month - 1, 1, 12, 0, 0)));
+}
+
+function currentISTDateInput() {
+  const { year, month, day } = getISTDateParts(new Date());
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function istInputDateToISO(dateInput: string) {
+  const parts = dateInput.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) {
+    return null;
+  }
+
+  const [year, month, day] = parts;
+  const utcMillis = Date.UTC(year, month - 1, day, 0, 0, 0) - IST_OFFSET_MINUTES * 60 * 1000;
+  return new Date(utcMillis).toISOString();
+}
+
+function shiftMonthKey(monthKey: string, delta: number) {
+  const [year, month] = monthKey.split('-').map(Number);
+  const totalMonths = year * 12 + (month - 1) + delta;
+  const nextYear = Math.floor(totalMonths / 12);
+  const nextMonth = ((totalMonths % 12) + 12) % 12 + 1;
+  return `${nextYear}-${String(nextMonth).padStart(2, '0')}`;
+}
+
+function toISTDayNumber(dateLike: Date | string) {
+  const { year, month, day } = getISTDateParts(dateLike);
+  return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
 }
 
 export default function MonthlyExpenses({ products, loading, userId }: MonthlyExpensesProps) {
@@ -22,13 +91,12 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
   const [expensesLoading, setExpensesLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date();
-    return monthKey(now);
+    return monthKeyFromIST(new Date());
   });
 
   const [name, setName] = useState('');
   const [price, setPrice] = useState<number | ''>('');
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => currentISTDateInput());
   const [productId, setProductId] = useState<string | ''>('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -81,9 +149,11 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
       setError('Invalid date selected. Please choose a valid date.');
       return;
     }
-    const [y, mo, d] = parts;
-    // Construct date in local timezone to avoid UTC midnight shift bucketing into wrong month.
-    const localDate = new Date(y, mo - 1, d).toISOString();
+    const localDate = istInputDateToISO(date);
+    if (!localDate) {
+      setError('Invalid date selected. Please choose a valid date.');
+      return;
+    }
 
     const expensePayload = {
       user_id: userId,
@@ -138,8 +208,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
   const groupedByMonth = useMemo(() => {
     const map = new Map<string, Expense[]>();
     expenses.forEach(e => {
-      const d = new Date(e.date);
-      const key = monthKey(d);
+      const key = monthKeyFromIST(e.date);
       const arr = map.get(key) ?? [];
       arr.push(e);
       map.set(key, arr);
@@ -159,8 +228,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
   );
 
   const selectedMonthDisplay = useMemo(() => {
-    const [y, m] = selectedMonth.split('-').map(Number);
-    return formatMonthYear(new Date(y, m - 1, 1));
+    return formatISTMonthYearFromKey(selectedMonth);
   }, [selectedMonth]);
 
   const totalForSelected = useMemo(
@@ -174,13 +242,11 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
   );
 
   const goPrev = useCallback(() => {
-    const [y, m] = selectedMonth.split('-').map(Number);
-    setSelectedMonth(monthKey(new Date(y, m - 2, 1)));
+    setSelectedMonth(shiftMonthKey(selectedMonth, -1));
   }, [selectedMonth]);
 
   const goNext = useCallback(() => {
-    const [y, m] = selectedMonth.split('-').map(Number);
-    setSelectedMonth(monthKey(new Date(y, m, 1)));
+    setSelectedMonth(shiftMonthKey(selectedMonth, 1));
   }, [selectedMonth]);
 
   const onSelectMonth = useCallback((key: string) => setSelectedMonth(key), []);
@@ -198,8 +264,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
       byProduct.set(e.product_id, dates);
     });
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayDayNumber = toISTDayNumber(new Date());
 
     const rows: {
       productId: string;
@@ -216,14 +281,14 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
       const lastBought = sorted[0];
 
       // Clamp to 0 — future-dated entries would otherwise produce negative values.
-      const rawDiff = Math.floor((today.getTime() - lastBought.getTime()) / 86400000);
+      const rawDiff = todayDayNumber - toISTDayNumber(lastBought);
       const daysSinceLast = Math.max(0, rawDiff);
 
       let avgInterval: number | null = null;
       if (sorted.length >= 2) {
         const intervals: number[] = [];
         for (let i = 0; i < sorted.length - 1; i++) {
-          const diff = Math.floor((sorted[i].getTime() - sorted[i + 1].getTime()) / 86400000);
+          const diff = toISTDayNumber(sorted[i]) - toISTDayNumber(sorted[i + 1]);
           if (diff > 0) intervals.push(diff);
         }
         if (intervals.length > 0) {
@@ -305,7 +370,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
                 <PlusCircle size={16} /> {submitting ? 'Adding...' : 'Add'}
               </button>
               <button onClick={() => {
-                setName(''); setPrice(''); setProductId(''); setNotes(''); setDate(new Date().toISOString().slice(0,10));
+                setName(''); setPrice(''); setProductId(''); setNotes(''); setDate(currentISTDateInput());
               }} className="px-3 py-2 rounded-md border">Reset</button>
             </div>
           </div>
@@ -333,7 +398,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
                     <div key={e.id} className="flex items-center justify-between p-3 rounded-md hover:bg-slate-50">
                       <div>
                         <div className="text-sm font-medium text-slate-800">{e.name}</div>
-                        <div className="text-xs text-slate-500">{new Date(e.date).toLocaleString()} • {e.notes}</div>
+                        <div className="text-xs text-slate-500">{IST_DATE_TIME_FORMATTER.format(new Date(e.date))} • {e.notes}</div>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-sm font-semibold">₹{e.price.toFixed(2)}</div>
@@ -354,8 +419,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
                 <div className="space-y-2">
                   {prevMonths.map(k => {
                     const arr = groupedByMonth.get(k) ?? [];
-                    const [y, m] = k.split('-').map(Number);
-                    const label = formatMonthYear(new Date(y, m - 1, 1));
+                    const label = formatISTMonthYearFromKey(k);
                     const sum = arr.reduce((s, x) => s + x.price, 0);
                     return (
                       <button key={k} onClick={() => onSelectMonth(k)} className="w-full flex items-center justify-between p-3 rounded hover:bg-slate-50">
@@ -390,7 +454,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
                           <div className="text-xs font-medium text-slate-800 truncate">{row.productName}</div>
                           <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
                             <Clock size={10} />
-                            Last bought {row.daysSinceLast === 0 ? 'today' : `${row.daysSinceLast}d ago`} · {row.lastBought.toLocaleDateString()}
+                            Last bought {row.daysSinceLast === 0 ? 'today' : `${row.daysSinceLast}d ago`} · {IST_DATE_FORMATTER.format(row.lastBought)}
                           </div>
                           {row.avgInterval !== null && (
                             <div className="text-xs text-slate-400 mt-0.5">
