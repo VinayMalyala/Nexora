@@ -90,6 +90,8 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [expensesLoading, setExpensesLoading] = useState(true);
   const [error, setError] = useState('');
+  const [pendingDeleteExpenseId, setPendingDeleteExpenseId] = useState<string | null>(null);
+  const [deletingExpense, setDeletingExpense] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(() => {
     return monthKeyFromIST(new Date());
   });
@@ -188,7 +190,8 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
   }, [date, name, notes, price, productId, products, submitting, userId]);
 
   const deleteExpense = useCallback(async (id: string) => {
-    if (!confirm('Delete this expense?')) return;
+    if (deletingExpense) return;
+    setDeletingExpense(true);
 
     const { error: deleteError } = await supabase
       .from('expenses')
@@ -198,12 +201,15 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
 
     if (deleteError) {
       setError(deleteError.message);
+      setDeletingExpense(false);
       return;
     }
 
     setError('');
     setExpenses(prev => prev.filter(e => e.id !== id));
-  }, [userId]);
+    setPendingDeleteExpenseId(null);
+    setDeletingExpense(false);
+  }, [deletingExpense, userId]);
 
   const groupedByMonth = useMemo(() => {
     const map = new Map<string, Expense[]>();
@@ -229,6 +235,11 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
 
   const selectedMonthDisplay = useMemo(() => {
     return formatISTMonthYearFromKey(selectedMonth);
+  }, [selectedMonth]);
+
+  const monthLabel = useMemo(() => {
+    const currentMonthKey = monthKeyFromIST(new Date());
+    return selectedMonth === currentMonthKey ? 'Current month' : 'Selected month';
   }, [selectedMonth]);
 
   const totalForSelected = useMemo(
@@ -319,7 +330,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
           </div>
 
           <div className="text-right">
-            <div className="text-sm text-slate-500">Current month</div>
+            <div className="text-sm text-slate-500">{monthLabel}</div>
             <div className="text-lg font-bold text-amber-600">{selectedMonthDisplay}</div>
             <div className="mt-2 text-2xl font-extrabold text-slate-800">₹{totalForSelected.toFixed(2)}</div>
           </div>
@@ -387,6 +398,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border p-4">
+              <div className="mb-3 text-xs text-slate-400">Returned or defective item? Use the delete icon to remove that purchase from this month.</div>
               {error ? <div className="mb-3 text-xs text-red-500">{error}</div> : null}
               {currentMonthExpenses.length === 0 ? (
                 <div className="text-sm text-slate-400">
@@ -402,7 +414,10 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-sm font-semibold">₹{e.price.toFixed(2)}</div>
-                        <button onClick={() => void deleteExpense(e.id)} className="p-2 rounded text-slate-400 hover:text-red-500">
+                        <button
+                          onClick={() => setPendingDeleteExpenseId(e.id)}
+                          className="p-2 rounded text-slate-400 hover:text-red-500"
+                        >
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -484,6 +499,41 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
           </div>
         </div>
       </div>
+
+      {pendingDeleteExpenseId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+            onClick={() => {
+              if (!deletingExpense) setPendingDeleteExpenseId(null);
+            }}
+          />
+          <div className="relative w-full max-w-sm rounded-2xl border border-slate-200 bg-white shadow-2xl p-5">
+            <h3 className="text-base font-semibold text-slate-800">Remove purchase?</h3>
+            <p className="mt-2 text-sm text-slate-500">
+              This will remove the item from Monthly Expenses for tracking.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDeleteExpenseId(null)}
+                disabled={deletingExpense}
+                className="px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void deleteExpense(pendingDeleteExpenseId)}
+                disabled={deletingExpense}
+                className="px-3 py-2 rounded-lg bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-60"
+              >
+                {deletingExpense ? 'Removing...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

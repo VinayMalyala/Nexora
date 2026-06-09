@@ -78,7 +78,11 @@ function Sidebar({
     <aside className="w-full sm:w-64 flex-shrink-0 bg-white border-r border-slate-100 flex flex-col h-full sm:sticky sm:top-0">
       {/* Brand */}
       <div className="px-4 py-4 sm:py-5 border-b border-slate-100 flex items-center justify-between">
-        <div className="flex items-center gap-3 flex-1">
+        <button
+          onClick={() => { onNavigate('home'); setMobileOpen(false); }}
+          className="flex items-center gap-3 flex-1 text-left rounded-lg hover:bg-slate-50 transition-colors"
+          aria-label="Go to home"
+        >
           <div className="w-8 sm:w-9 h-8 sm:h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm flex-shrink-0">
             <Sparkles size={16} className="sm:w-[18px] sm:h-[18px] text-white" />
           </div>
@@ -86,7 +90,7 @@ function Sidebar({
             <h1 className="text-base font-bold text-slate-800 leading-tight">Nexora</h1>
             <p className="text-xs text-slate-400">Your wishlist</p>
           </div>
-        </div>
+        </button>
         <button
           onClick={() => setMobileOpen(false)}
           className="sm:hidden p-1 text-slate-400 hover:text-slate-600 transition-colors"
