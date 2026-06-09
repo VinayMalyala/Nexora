@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { Search, Plus, SlidersHorizontal, X, Tag } from 'lucide-react';
 import type { Page } from '../types';
 import { CATEGORIES } from '../types';
@@ -45,6 +45,7 @@ function ProductsHeader({
   const [pendingPage, setPendingPage] = useState(activePage);
   const [pendingTag, setPendingTag] = useState(activeTag);
   const [pendingCompany, setPendingCompany] = useState(activeCompany);
+  const [companyQuery, setCompanyQuery] = useState('');
 
   useEffect(() => {
     if (!showFilters) {
@@ -55,8 +56,18 @@ function ProductsHeader({
     setPendingPage(activePage);
     setPendingTag(activeTag);
     setPendingCompany(activeCompany);
+    setCompanyQuery('');
     setShowTagDropdown(false);
   }, [showFilters, activeCategory, activePage, activeTag, activeCompany]);
+
+  const filteredCompanies = useMemo(() => {
+    const q = companyQuery.trim().toLowerCase();
+    if (!q) {
+      return availableCompanies;
+    }
+
+    return availableCompanies.filter(company => company.toLowerCase().includes(q));
+  }, [availableCompanies, companyQuery]);
 
   const activeFiltersCount = (activeCategory ? 1 : 0) + (activePage ? 1 : 0) + (activeTag ? 1 : 0) + (activeCompany ? 1 : 0);
 
@@ -184,26 +195,55 @@ function ProductsHeader({
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-semibold text-slate-400">Company</span>
                   {availableCompanies.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => setPendingCompany('')}
-                        className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                          !pendingCompany ? 'bg-amber-400 text-white border-amber-400' : 'border-slate-200 text-slate-600 hover:border-amber-300'
-                        }`}
-                      >
-                        All
-                      </button>
-                      {availableCompanies.map(company => (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={companyQuery}
+                          onChange={e => setCompanyQuery(e.target.value)}
+                          placeholder="Search company..."
+                          className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400"
+                        />
                         <button
-                          key={company}
-                          onClick={() => setPendingCompany(company === pendingCompany ? '' : company)}
-                          className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                            pendingCompany === company ? 'bg-amber-400 text-white border-amber-400' : 'border-slate-200 text-slate-600 hover:border-amber-300'
+                          type="button"
+                          onClick={() => {
+                            setPendingCompany('');
+                            setCompanyQuery('');
+                          }}
+                          className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
+                            !pendingCompany ? 'bg-amber-400 text-white border-amber-400' : 'border-slate-200 text-slate-600 hover:border-amber-300'
                           }`}
                         >
-                          {company}
+                          All
                         </button>
-                      ))}
+                      </div>
+
+                      <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100 bg-white">
+                        {filteredCompanies.length > 0 ? (
+                          filteredCompanies.map(company => (
+                            <button
+                              key={company}
+                              type="button"
+                              onClick={() => setPendingCompany(company === pendingCompany ? '' : company)}
+                              className={`w-full px-3 py-2 text-xs text-left transition-colors ${
+                                pendingCompany === company
+                                  ? 'bg-amber-50 text-amber-700 font-semibold'
+                                  : 'text-slate-600 hover:bg-slate-50'
+                              }`}
+                              title={company}
+                            >
+                              <span className="block truncate">{company}</span>
+                            </button>
+                          ))
+                        ) : (
+                          <p className="px-3 py-2 text-xs text-slate-500">No matching company found.</p>
+                        )}
+                      </div>
+
+                      {pendingCompany && (
+                        <p className="text-xs text-slate-500">
+                          Selected: <span className="font-medium text-slate-700">{pendingCompany}</span>
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <p className="text-xs text-slate-500">No companies available to filter.</p>
