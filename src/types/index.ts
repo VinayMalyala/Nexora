@@ -60,14 +60,14 @@ export type ViewMode = 'home' | 'recents' | 'page' | 'price-tracker' | 'monthly-
 
 export const CATEGORIES = [
   'Personal Care',
+  'Food',
+  'Beauty',
   'Electronics',
   'Clothes',
-  'Food & Grocery',
   'Home & Kitchen',
   'Health & Wellness',
   'Books',
   'Sports & Fitness',
-  'Beauty',
   'Other',
 ] as const;
 

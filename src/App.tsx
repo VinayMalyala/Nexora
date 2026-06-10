@@ -105,6 +105,8 @@ function AppContent({
   const [activeView, setActiveView] = useState<ViewMode>('home');
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [showAddPage, setShowAddPage] = useState(false);
+  const [pendingDeletePage, setPendingDeletePage] = useState<{ id: string; name: string } | null>(null);
+  const [deletingPage, setDeletingPage] = useState(false);
 
   const { pages, addPage, deletePage } = usePages(currentUser.id);
 
@@ -143,13 +145,30 @@ function AppContent({
   );
 
   const handleDeletePage = useCallback(
-    async (id: string) => {
-      if (!confirm('Delete this page? Products will not be deleted, just unassigned.')) return;
-      await deletePage(id);
-      if (activePageId === id) setActiveView('home');
+    (id: string) => {
+      const page = pages.find(current => current.id === id);
+      setPendingDeletePage({ id, name: page?.name ?? 'this page' });
     },
-    [activePageId, deletePage]
+    [pages]
   );
+
+  const confirmDeletePage = useCallback(async () => {
+    if (!pendingDeletePage || deletingPage) return;
+
+    setDeletingPage(true);
+    const deletingId = pendingDeletePage.id;
+    const { error } = await deletePage(deletingId);
+
+    if (!error) {
+      if (activePageId === deletingId) {
+        setActiveView('home');
+        setActivePageId(null);
+      }
+      setPendingDeletePage(null);
+    }
+
+    setDeletingPage(false);
+  }, [activePageId, deletePage, deletingPage, pendingDeletePage]);
 
   const activePage = useMemo(
     () => pages.find(p => p.id === activePageId),
@@ -221,6 +240,41 @@ function AppContent({
             }
           }}
         />
+      )}
+
+      {pendingDeletePage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+            onClick={() => {
+              if (!deletingPage) setPendingDeletePage(null);
+            }}
+          />
+          <div className="relative w-full max-w-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xl p-5">
+            <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">Delete page?</h3>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              &quot;{pendingDeletePage.name}&quot; will be removed. Products will stay safe and become unassigned.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDeletePage(null)}
+                disabled={deletingPage}
+                className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDeletePage()}
+                disabled={deletingPage}
+                className="px-3 py-2 rounded-lg bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-60"
+              >
+                {deletingPage ? 'Deleting...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

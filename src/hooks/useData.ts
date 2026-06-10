@@ -6,6 +6,21 @@ type SupabaseProductRow = Product & {
   product_tags?: { tag: string }[];
 };
 
+function isMissingQuantityColumnError(message?: string) {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  const mentionsQuantityColumn = normalized.includes('quantity_unit') || normalized.includes('quantity_value');
+  return mentionsQuantityColumn && normalized.includes('schema cache');
+}
+
+function stripQuantityFields<T extends Record<string, unknown>>(payload: T): Omit<T, 'quantity_value' | 'quantity_unit'> {
+  const { quantity_value: _quantityValue, quantity_unit: _quantityUnit, ...rest } = payload as T & {
+    quantity_value?: unknown;
+    quantity_unit?: unknown;
+  };
+  return rest;
+}
+
 function mapProductRow(row: SupabaseProductRow): Product {
   return {
     id: row.id,
@@ -150,11 +165,23 @@ export function useProducts(userId?: string | null) {
       }
 
       setError(null);
-      const { data, error } = await supabase
+      const insertPayload = { ...product, sort_order: 0, user_id: userId };
+
+      let response = await supabase
         .from('products')
-        .insert({ ...product, sort_order: 0, user_id: userId })
+        .insert(insertPayload)
         .select()
         .single();
+
+      if (response.error && isMissingQuantityColumnError(response.error.message)) {
+        response = await supabase
+          .from('products')
+          .insert(stripQuantityFields(insertPayload))
+          .select()
+          .single();
+      }
+
+      const { data, error } = response;
 
       if (error) {
         setError(error.message);
@@ -181,12 +208,27 @@ export function useProducts(userId?: string | null) {
   const updateProduct = useCallback(
     async (id: string, updates: Partial<Omit<Product, 'id' | 'created_at' | 'tags'>>, tags?: string[]) => {
       setError(null);
-      const query = supabase
-        .from('products')
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', id);
 
-      const { error } = userId ? await query.eq('user_id', userId) : await query;
+      const runUpdate = async (payload: Record<string, unknown>) => {
+        const query = supabase
+          .from('products')
+          .update(payload)
+          .eq('id', id);
+
+        return userId ? query.eq('user_id', userId) : query;
+      };
+
+      let appliedUpdates = updates;
+      let { error } = await runUpdate({ ...updates, updated_at: new Date().toISOString() });
+
+      if (error && isMissingQuantityColumnError(error.message)) {
+        const sanitizedUpdates = stripQuantityFields(updates as Record<string, unknown>) as Partial<Omit<Product, 'id' | 'created_at' | 'tags'>>;
+        const fallback = await runUpdate({ ...sanitizedUpdates, updated_at: new Date().toISOString() });
+        error = fallback.error;
+        if (!error) {
+          appliedUpdates = sanitizedUpdates;
+        }
+      }
 
       if (error) {
         setError(error.message);
@@ -205,7 +247,7 @@ export function useProducts(userId?: string | null) {
           product.id === id
             ? {
                 ...product,
-                ...updates,
+                ...appliedUpdates,
                 updated_at: new Date().toISOString(),
                 tags: tags ?? product.tags,
               }
