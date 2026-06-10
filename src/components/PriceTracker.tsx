@@ -96,6 +96,7 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
   const [unit, setUnit] = useState<'g' | 'kg' | 'ml' | 'l'>('g');
   const [manualPrice, setManualPrice] = useState<number | ''>('');
   const [copied, setCopied] = useState(false);
+  const [productSearchQuery, setProductSearchQuery] = useState('');
   const [basketIds, setBasketIds] = useState<string[]>([]);
   const [basketSearchQuery, setBasketSearchQuery] = useState('');
 
@@ -177,6 +178,18 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
     ).slice(0, 6);
   }, [basketSearchQuery, products, basketIds]);
 
+  const filteredProducts = useMemo(() => {
+    const q = productSearchQuery.trim().toLowerCase();
+    if (!q) return products;
+
+    return products.filter(product => {
+      const inName = product.name.toLowerCase().includes(q);
+      const inCompany = product.company?.toLowerCase().includes(q) ?? false;
+      const inTags = product.tags?.some(tag => tag.toLowerCase().includes(q)) ?? false;
+      return inName || inCompany || inTags;
+    });
+  }, [productSearchQuery, products]);
+
   const addToBasket = (id: string) => {
     setBasketIds(prev => prev.includes(id) ? prev : [...prev, id]);
     setBasketSearchQuery('');
@@ -213,7 +226,26 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
             <div className="p-4 border-b border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">Your Products</div>
-                <div className="text-xs text-slate-400 dark:text-slate-500">{products.length} items</div>
+                <div className="text-xs text-slate-400 dark:text-slate-500">
+                  {filteredProducts.length}{productSearchQuery.trim() ? ` / ${products.length}` : ''} items
+                </div>
+              </div>
+              <div className="mt-3 relative">
+                <input
+                  value={productSearchQuery}
+                  onChange={event => setProductSearchQuery(event.target.value)}
+                  placeholder="Search by name, company, or tag..."
+                  className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 pl-3 pr-8 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400"
+                />
+                {productSearchQuery && (
+                  <button
+                    onClick={() => setProductSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    aria-label="Clear product search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -222,8 +254,13 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
               {!loading && products.length === 0 && (
                 <div className="text-sm text-slate-400 dark:text-slate-500 p-3">No products yet. Add one from the main view.</div>
               )}
+              {!loading && products.length > 0 && filteredProducts.length === 0 && (
+                <div className="text-sm text-slate-400 dark:text-slate-500 p-3">
+                  No matching products for "{productSearchQuery}".
+                </div>
+              )}
 
-              {!loading && products.map(product => (
+              {!loading && filteredProducts.map(product => (
                 <button
                   key={product.id}
                   onClick={() => setSelectedId(product.id)}
