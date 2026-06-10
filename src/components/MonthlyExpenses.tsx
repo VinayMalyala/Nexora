@@ -777,7 +777,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Monthly Expenses</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Add purchases and track your monthly spending. Each month is isolated.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Track expenses month by month with optional product linking.</p>
           </div>
 
           <div className="text-right">
@@ -790,9 +790,6 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="col-span-1 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
             <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Add Purchase</div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-              Track both saved products and manual purchases in one place.
-            </p>
 
             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Saved Product</label>
             <StyledProductDropdown
@@ -800,10 +797,6 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
               options={productOptions}
               onChange={handleProductSelect}
             />
-            <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
-              Leave this empty to add a manual item.
-            </p>
-
             <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Item Name</label>
             <input
               value={name}
@@ -852,7 +845,6 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
             </div>
 
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
-              <div className="mb-3 text-xs text-slate-400 dark:text-slate-500">Returned or defective item? Use the delete icon to remove that purchase from this month.</div>
               {error ? <div className="mb-3 text-xs text-red-500">{error}</div> : null}
               {currentMonthExpenses.length === 0 ? (
                 <div className="text-sm text-slate-400 dark:text-slate-500">

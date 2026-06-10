@@ -217,7 +217,7 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Price Tracker</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Quickly calculate unit price and compare best value products.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Calculate unit rate and compare best-value products.</p>
           </div>
         </div>
 
@@ -315,7 +315,7 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
                     />
                     <StyledUnitDropdown value={unit} options={unitOptions} onChange={setUnit} />
                   </div>
-                  <div className="text-xs text-slate-400 dark:text-slate-500 mt-2">Enter total amount for comparison ({inputDescription}).</div>
+                  <div className="text-xs text-slate-400 dark:text-slate-500 mt-2">Use total quantity for comparison ({inputDescription}).</div>
                 </div>
 
                 <div>
@@ -328,7 +328,7 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
                     className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 px-3 py-2 bg-white"
                     min={0}
                   />
-                  <div className="text-xs text-slate-400 dark:text-slate-500 mt-2">Use this for temporary deal comparison.</div>
+                  <div className="text-xs text-slate-400 dark:text-slate-500 mt-2">Leave blank to use stored product price.</div>
                 </div>
               </div>
             </div>
@@ -337,7 +337,7 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
               <div>
                 <div className="text-sm text-slate-500 dark:text-slate-400">Result</div>
                 <div className="mt-2">
-                  {!canCompute && !selectedProduct && <div className="text-sm text-slate-400 dark:text-slate-500">Select a product or enter an override price, then add an amount to compute the rate.</div>}
+                  {!canCompute && !selectedProduct && <div className="text-sm text-slate-400 dark:text-slate-500">Select a product (or enter price), then add quantity to calculate the unit rate.</div>}
                   {canCompute && (
                     <>
                       <div className="text-sm text-slate-500">₹{priceToUse.toFixed(2)} total • {displayAmount} {displayUnit}</div>
@@ -347,7 +347,7 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
                       <div className="mt-1 text-sm text-slate-400">Based on {manualPrice !== '' ? 'overridden price' : 'stored product price'}.</div>
                     </>
                   )}
-                  {!canCompute && selectedProduct && <div className="text-sm text-slate-400 dark:text-slate-500">Enter amount to compute the rate.</div>}
+                  {!canCompute && selectedProduct && <div className="text-sm text-slate-400 dark:text-slate-500">Enter quantity to calculate the unit rate.</div>}
                 </div>
               </div>
 
@@ -359,7 +359,7 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
                 >
                   {copied ? 'Copied!' : 'Copy rate'}
                 </button>
-                <div className="text-xs text-slate-400 dark:text-slate-500">Tip: smaller units improve precision.</div>
+                {canCompute && <div className="text-xs text-slate-400 dark:text-slate-500">Tip: smaller units improve precision.</div>}
               </div>
             </div>
 
@@ -370,7 +370,7 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
               </div>
 
               {comparisonRows.length === 0 ? (
-                <p className="text-sm text-slate-400 dark:text-slate-500">Enter amount and unit to compare top products by effective unit rate.</p>
+                <p className="text-sm text-slate-400 dark:text-slate-500">Add quantity and unit to compare products by effective rate.</p>
               ) : (
                 <div className="space-y-2">
                   {comparisonRows.map((row, index) => (

@@ -335,7 +335,6 @@ export default memo(function ProductModal({
                 />
               </div>
               {errors.quantity_value && <p className="text-xs text-red-400 mt-1">{errors.quantity_value}</p>}
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Used by Price Tracker to auto-fill amount and unit.</p>
             </div>
 
             {field('Image URL', 'image_url', { placeholder: 'https://...' })}
