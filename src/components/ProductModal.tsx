@@ -199,6 +199,8 @@ export default memo(function ProductModal({
             company: form.company?.trim() || '',
             product_url: form.product_url.trim(),
             notes: form.notes.trim(),
+            // Preserve existing favorite status on edit; default false for new products.
+            is_favorite: editProduct?.is_favorite ?? false,
           },
           finalTags,
           editProduct?.id

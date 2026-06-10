@@ -2,6 +2,7 @@ import React, { memo, useEffect, useMemo, useState } from 'react';
 import {
   Home,
   Clock,
+  Heart,
   ChevronDown,
   ChevronRight,
   Plus,
@@ -127,6 +128,12 @@ function Sidebar({
           'Recents',
           activeView === 'recents',
           () => { onNavigate('recents'); setMobileOpen(false); }
+        )}
+        {navItem(
+          <Heart size={16} />,
+          'Favorites',
+          activeView === 'favorites',
+          () => { onNavigate('favorites'); setMobileOpen(false); }
         )}
 
         <div className="pt-2 sm:pt-3 pb-1">

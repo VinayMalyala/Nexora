@@ -21,6 +21,54 @@ function stripQuantityFields<T extends Record<string, unknown>>(payload: T): Omi
   return rest;
 }
 
+function isMissingFavoriteColumnError(message?: string) {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return normalized.includes('is_favorite') && normalized.includes('schema cache');
+}
+
+function favoriteFallbackStorageKey(userId?: string | null) {
+  return userId ? `nexora_favorite_fallback_${userId}` : '';
+}
+
+function readFavoriteFallback(userId?: string | null): Record<string, boolean> {
+  const key = favoriteFallbackStorageKey(userId);
+  if (!key) return {};
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, boolean>;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeFavoriteFallback(userId: string | null | undefined, value: Record<string, boolean>) {
+  const key = favoriteFallbackStorageKey(userId);
+  if (!key) return;
+
+  try {
+    if (Object.keys(value).length === 0) {
+      window.localStorage.removeItem(key);
+      return;
+    }
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore storage write failures (private mode / quota), UI state still works in-memory.
+  }
+}
+
+function applyFavoriteOverrides(products: Product[], overrides: Record<string, boolean>) {
+  if (Object.keys(overrides).length === 0) return products;
+  return products.map(product =>
+    Object.prototype.hasOwnProperty.call(overrides, product.id)
+      ? { ...product, is_favorite: overrides[product.id] }
+      : product
+  );
+}
+
 function mapProductRow(row: SupabaseProductRow): Product {
   return {
     id: row.id,
@@ -36,6 +84,7 @@ function mapProductRow(row: SupabaseProductRow): Product {
     product_url: row.product_url,
     notes: row.notes,
     sort_order: row.sort_order,
+    is_favorite: row.is_favorite ?? false,
     created_at: row.created_at,
     updated_at: row.updated_at,
     tags: row.product_tags?.map(t => t.tag) ?? [],
@@ -118,6 +167,11 @@ export function useProducts(userId?: string | null) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const [favoriteFallback, setFavoriteFallback] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setFavoriteFallback(readFavoriteFallback(userId));
+  }, [userId]);
 
   const fetchProducts = useCallback(async () => {
     if (!userId) {
@@ -145,11 +199,12 @@ export function useProducts(userId?: string | null) {
     if (productError) {
       setError(productError.message);
     } else if (data) {
-      setProducts(data.map(mapProductRow));
+      const mapped = data.map(mapProductRow);
+      setProducts(applyFavoriteOverrides(mapped, favoriteFallback));
     }
 
     setLoading(false);
-  }, [userId]);
+  }, [favoriteFallback, userId]);
 
   useEffect(() => {
     fetchProducts();
@@ -272,6 +327,57 @@ export function useProducts(userId?: string | null) {
     return { error: null };
   }, [userId]);
 
+  const toggleFavorite = useCallback(async (id: string, isFavorite: boolean) => {
+    setError(null);
+
+    // Optimistic update — flip immediately so the UI feels instant.
+    setProducts(prev =>
+      prev.map(product =>
+        product.id === id ? { ...product, is_favorite: isFavorite } : product
+      )
+    );
+
+    const query = supabase
+      .from('products')
+      .update({ is_favorite: isFavorite, updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    let { error } = userId ? await query.eq('user_id', userId) : await query;
+
+    if (error && isMissingFavoriteColumnError(error.message)) {
+      // If schema cache lags behind migration, keep app behavior stable using local fallback.
+      setFavoriteFallback(prev => {
+        const next = { ...prev, [id]: isFavorite };
+        writeFavoriteFallback(userId, next);
+        return next;
+      });
+      setError('Favorites are saved locally until database schema cache catches up.');
+      return { error: null };
+    }
+
+    if (error) {
+      // Revert optimistic update on failure.
+      setProducts(prev =>
+        prev.map(product =>
+          product.id === id ? { ...product, is_favorite: !isFavorite } : product
+        )
+      );
+      setError(error.message);
+      return { error };
+    }
+
+    // Persisted successfully — clear any fallback override for this product.
+    setFavoriteFallback(prev => {
+      if (!Object.prototype.hasOwnProperty.call(prev, id)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      writeFavoriteFallback(userId, next);
+      return next;
+    });
+
+    return { error: null };
+  }, [userId]);
+
   return {
     products,
     loading,
@@ -280,6 +386,7 @@ export function useProducts(userId?: string | null) {
     addProduct,
     updateProduct,
     deleteProduct,
+    toggleFavorite,
   };
 }
 

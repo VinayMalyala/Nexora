@@ -460,6 +460,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
   const [selectedMonth, setSelectedMonth] = useState(() => {
     return monthKeyFromIST(new Date());
   });
+  const [manualMonthSelection, setManualMonthSelection] = useState(false);
 
   const [name, setName] = useState('');
   const [price, setPrice] = useState<number | ''>('');
@@ -467,6 +468,41 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
   const [productId, setProductId] = useState<string | ''>('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const lastAutoDateRef = useRef(currentISTDateInput());
+
+  useEffect(() => {
+    // If user has navigated back to current month, resume automatic month following.
+    if (selectedMonth === monthKeyFromIST(new Date())) {
+      setManualMonthSelection(false);
+    }
+  }, [selectedMonth]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      const nowMonth = monthKeyFromIST(new Date());
+      const todayInput = currentISTDateInput();
+
+      // Auto-advance month only when user hasn't intentionally pinned another month.
+      setSelectedMonth(current => (manualMonthSelection ? current : nowMonth));
+
+      // Keep date input in sync when it was previously auto-managed.
+      setDate(current => {
+        if (current === todayInput) {
+          lastAutoDateRef.current = todayInput;
+          return current;
+        }
+
+        if (current === lastAutoDateRef.current) {
+          lastAutoDateRef.current = todayInput;
+          return todayInput;
+        }
+
+        return current;
+      });
+    }, 60000);
+
+    return () => window.clearInterval(intervalId);
+  }, [manualMonthSelection]);
 
   useEffect(() => {
     let mounted = true;
@@ -624,14 +660,19 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
   );
 
   const goPrev = useCallback(() => {
+    setManualMonthSelection(true);
     setSelectedMonth(shiftMonthKey(selectedMonth, -1));
   }, [selectedMonth]);
 
   const goNext = useCallback(() => {
+    setManualMonthSelection(true);
     setSelectedMonth(shiftMonthKey(selectedMonth, 1));
   }, [selectedMonth]);
 
-  const onSelectMonth = useCallback((key: string) => setSelectedMonth(key), []);
+  const onSelectMonth = useCallback((key: string) => {
+    setManualMonthSelection(true);
+    setSelectedMonth(key);
+  }, []);
 
   const productOptions = useMemo<ProductOption[]>(() => {
     const options: ProductOption[] = [{ value: '', label: '-- Select from saved products --' }];

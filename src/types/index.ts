@@ -20,6 +20,7 @@ export interface Product {
   product_url: string;
   notes: string;
   sort_order: number;
+  is_favorite: boolean;
   created_at: string;
   updated_at: string;
   tags?: string[];
@@ -56,7 +57,7 @@ export interface Expense {
   created_at?: string;
 }
 
-export type ViewMode = 'home' | 'recents' | 'page' | 'price-tracker' | 'monthly-expenses' | 'profile';
+export type ViewMode = 'home' | 'recents' | 'favorites' | 'page' | 'price-tracker' | 'monthly-expenses' | 'profile';
 
 export const CATEGORIES = [
   'Personal Care',

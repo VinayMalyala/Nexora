@@ -110,17 +110,19 @@ function AppContent({
 
   const { pages, addPage, deletePage } = usePages(currentUser.id);
 
+  const isFavorites = activeView === 'favorites';
   const isRecents = activeView === 'recents';
   const isPage = activeView === 'page';
 
   // Single fetch for all products — filtered client-side to avoid multiple Supabase calls
-  const { products: allProducts, loading, addProduct, updateProduct, deleteProduct } = useProducts(currentUser.id);
+  const { products: allProducts, loading, addProduct, updateProduct, deleteProduct, toggleFavorite } = useProducts(currentUser.id);
 
   const products = useMemo(() => {
     if (isRecents) return allProducts.slice(0, 20);
+    if (isFavorites) return allProducts.filter(p => p.is_favorite);
     if (isPage && activePageId) return allProducts.filter(p => p.page_id === activePageId);
     return allProducts;
-  }, [allProducts, isRecents, isPage, activePageId]);
+  }, [allProducts, isRecents, isFavorites, isPage, activePageId]);
 
   const handleNavigate = useCallback((view: ViewMode, pageId?: string) => {
     setActiveView(view);
@@ -142,6 +144,13 @@ function AppContent({
       }
     },
     [addProduct, updateProduct]
+  );
+
+  const handleToggleFavorite = useCallback(
+    async (id: string, isFavorite: boolean) => {
+      await toggleFavorite(id, isFavorite);
+    },
+    [toggleFavorite]
   );
 
   const handleDeletePage = useCallback(
@@ -178,6 +187,7 @@ function AppContent({
   const viewTitle = useMemo(() => {
     if (activeView === 'home') return 'All Products';
     if (activeView === 'recents') return 'Recent Products';
+    if (activeView === 'favorites') return 'Favorites';
     if (activeView === 'price-tracker') return 'Price Tracker';
     return activePage?.name ?? 'Page';
   }, [activeView, activePage]);
@@ -185,6 +195,7 @@ function AppContent({
   const viewSubtitle = useMemo(() => {
     if (activeView === 'home') return `${products.length} products`;
     if (activeView === 'recents') return 'Your 20 most recently added';
+    if (activeView === 'favorites') return products.length === 0 ? 'No favorites yet' : `${products.length} product${products.length !== 1 ? 's' : ''} you love`;
     if (activeView === 'price-tracker') return 'Calculate price per unit for your products';
     if (activeView === 'profile') return 'View and manage your profile details';
     return `${products.length} products in this page`;
@@ -223,6 +234,7 @@ function AppContent({
             showPageFilter={activeView === 'home'}
             onAdd={handleSave}
             onDelete={deleteProduct}
+            onToggleFavorite={handleToggleFavorite}
           />
         )}
       </main>

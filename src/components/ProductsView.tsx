@@ -15,6 +15,7 @@ interface ProductsViewProps {
   showPageFilter?: boolean;
   onAdd: (data: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'tags' | 'sort_order'>, tags: string[], editId?: string) => Promise<void>;
   onDelete: (id: string) => void;
+  onToggleFavorite: (id: string, isFavorite: boolean) => void;
 }
 
 function ProductsView({
@@ -27,6 +28,7 @@ function ProductsView({
   showPageFilter,
   onAdd,
   onDelete,
+  onToggleFavorite,
 }: ProductsViewProps) {
   const [showModal, setShowModal] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
@@ -133,6 +135,7 @@ function ProductsView({
             hidePageBadge={!!defaultPageId}
             onDelete={onDelete}
             onEdit={handleEditProduct}
+            onToggleFavorite={onToggleFavorite}
           />
         ))}
       </div>

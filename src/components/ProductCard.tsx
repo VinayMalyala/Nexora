@@ -1,5 +1,5 @@
 import { memo, useCallback, useMemo, useState } from 'react';
-import { ExternalLink, Tag, Trash2, Edit3, TrendingDown, ShoppingBag } from 'lucide-react';
+import { ExternalLink, Tag, Trash2, Edit3, TrendingDown, ShoppingBag, Heart } from 'lucide-react';
 import type { Product, Page } from '../types';
 
 const formatPrice = (price: number) =>
@@ -11,10 +11,12 @@ interface ProductCardProps {
   hidePageBadge?: boolean;
   onDelete: (id: string) => void;
   onEdit: (product: Product) => void;
+  onToggleFavorite: (id: string, isFavorite: boolean) => void;
 }
 
-function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit }: ProductCardProps) {
+function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit, onToggleFavorite }: ProductCardProps) {
   const [imageError, setImageError] = useState(false);
+  const [togglingFav, setTogglingFav] = useState(false);
 
   const discount = useMemo(
     () =>
@@ -31,6 +33,13 @@ function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit }: Produc
 
   const handleDelete = useCallback(() => onDelete(product.id), [onDelete, product.id]);
   const handleEdit = useCallback(() => onEdit(product), [onEdit, product]);
+  const handleToggleFavorite = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (togglingFav) return;
+    setTogglingFav(true);
+    await onToggleFavorite(product.id, !product.is_favorite);
+    setTogglingFav(false);
+  }, [onToggleFavorite, product.id, product.is_favorite, togglingFav]);
 
   return (
     <div className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-all duration-200 overflow-hidden flex flex-col hover:shadow-lg">
@@ -82,8 +91,46 @@ function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit }: Produc
 
       <div className="flex flex-col flex-1 p-3 sm:p-4 gap-2 sm:gap-3">
         {product.company && (
-          <div className="text-xs text-slate-500 dark:text-slate-400 truncate" title={product.company}>
-            {product.company}
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs text-slate-500 dark:text-slate-400 truncate" title={product.company}>
+              {product.company}
+            </div>
+            <button
+              onClick={handleToggleFavorite}
+              disabled={togglingFav}
+              title={product.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+              className={`flex-shrink-0 p-1 rounded-full transition-colors duration-150 ${
+                product.is_favorite
+                  ? 'text-red-500 hover:text-red-400'
+                  : 'text-slate-300 dark:text-slate-600 hover:text-red-400'
+              }`}
+            >
+              <Heart
+                size={14}
+                fill={product.is_favorite ? 'currentColor' : 'none'}
+                strokeWidth={2}
+              />
+            </button>
+          </div>
+        )}
+        {!product.company && (
+          <div className="flex justify-end">
+            <button
+              onClick={handleToggleFavorite}
+              disabled={togglingFav}
+              title={product.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+              className={`p-1 rounded-full transition-colors duration-150 ${
+                product.is_favorite
+                  ? 'text-red-500 hover:text-red-400'
+                  : 'text-slate-300 dark:text-slate-600 hover:text-red-400'
+              }`}
+            >
+              <Heart
+                size={14}
+                fill={product.is_favorite ? 'currentColor' : 'none'}
+                strokeWidth={2}
+              />
+            </button>
           </div>
         )}
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug line-clamp-2 flex-1">
