@@ -159,9 +159,9 @@ function StyledProductDropdown({
       <button
         type="button"
         onClick={() => setOpen(current => !current)}
-        className="w-full rounded-md border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 pl-3 pr-9 py-2 bg-white text-sm text-left focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400"
+        className="w-full rounded-xl border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 pl-3 pr-9 py-2.5 bg-white text-sm text-left shadow-sm hover:border-slate-300 dark:hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
       >
-        <span className="block truncate">{activeLabel}</span>
+        <span className={`block truncate ${value ? 'text-slate-700 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'}`}>{activeLabel}</span>
         <ChevronDown
           size={16}
           className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
@@ -169,7 +169,7 @@ function StyledProductDropdown({
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-1 w-full max-h-64 overflow-auto rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-lg">
+        <div className="absolute z-20 mt-1.5 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-xl">
           {options.map(option => (
             <button
               key={`${option.value || 'empty'}-${option.label}`}
@@ -180,7 +180,7 @@ function StyledProductDropdown({
                 setOpen(false);
               }}
               disabled={option.disabled}
-              className={`w-full px-3 py-2 text-sm text-left transition-colors ${
+              className={`w-full px-3 py-2.5 text-sm text-left transition-colors ${
                 option.disabled
                   ? 'text-slate-400 dark:text-slate-500 cursor-not-allowed'
                   : option.value === value
@@ -697,13 +697,18 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
     if (selectedProduct) {
       setName(selectedProduct.name);
       setPrice(selectedProduct.price);
+      return;
     }
+
+    // Reset fields when user switches back to the default "no saved product" option.
+    setName('');
+    setPrice('');
   }, [products]);
 
-  // Restock Insights: only uses expenses that are linked to a product_id
+  // Restock Insights: computed across history, but displayed only for the selected product.
   const restockInsights = useMemo(() => {
     // Build O(1) product lookup upfront — avoids O(n) find() inside the loop.
-    const productMap = new Map(products.map(p => [p.id, p.name]));
+    const productMap = new Map(products.map(p => [p.id, p]));
 
     const byProduct = new Map<string, Date[]>();
     expenses.forEach(e => {
@@ -718,6 +723,7 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
     const rows: {
       productId: string;
       productName: string;
+      productPrice: number;
       lastBought: Date;
       daysSinceLast: number;
       avgInterval: number | null;
@@ -746,9 +752,11 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
       }
 
       const dueSoon = avgInterval !== null && daysSinceLast >= avgInterval * 0.8;
-      const productName = productMap.get(productId) ?? 'Unknown product';
+      const product = productMap.get(productId);
+      const productName = product?.name ?? 'Unknown product';
+      const productPrice = product?.price ?? 0;
 
-      rows.push({ productId, productName, lastBought, daysSinceLast, avgInterval, dueSoon });
+      rows.push({ productId, productName, productPrice, lastBought, daysSinceLast, avgInterval, dueSoon });
     });
 
     return rows.sort((a, b) => {
@@ -757,6 +765,11 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
       return b.daysSinceLast - a.daysSinceLast;
     });
   }, [expenses, products]);
+
+  const selectedRestockInsight = useMemo(
+    () => (productId ? restockInsights.find(row => row.productId === productId) ?? null : null),
+    [productId, restockInsights]
+  );
 
   return (
     <div className="p-6 h-full overflow-auto bg-slate-50 dark:bg-slate-950">
@@ -778,10 +791,10 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
           <div className="col-span-1 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
             <div className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">Add Purchase</div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-              You can track items not listed in cards too, like apples, vegetables, fuel, etc.
+              Track both saved products and manual purchases in one place.
             </p>
 
-            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Saved Product (optional)</label>
+            <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Saved Product</label>
             <StyledProductDropdown
               value={productId}
               options={productOptions}
@@ -892,59 +905,70 @@ export default function MonthlyExpenses({ products, loading, userId }: MonthlyEx
               )}
             </div>
 
-            {restockInsights.length > 0 && (
-              <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <RefreshCw size={14} className="text-slate-500 dark:text-slate-400" />
-                  <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">Restock Insights</div>
-                  <span className="ml-auto text-xs text-slate-400">{restockInsights.length} tracked product{restockInsights.length !== 1 ? 's' : ''}</span>
-                </div>
-                <div className="space-y-2">
-                  {restockInsights.map(row => (
-                    <div
-                      key={row.productId}
-                      className={`flex items-start justify-between p-3 rounded-md border ${
-                        row.dueSoon
-                          ? 'border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800'
-                          : 'border-slate-100 dark:border-slate-700'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2 min-w-0">
-                        {row.dueSoon
-                          ? <AlertTriangle size={13} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                          : <TrendingDown size={13} className="text-slate-400 flex-shrink-0 mt-0.5" />
-                        }
-                        <div className="min-w-0">
-                          <div className="text-xs font-medium text-slate-800 dark:text-slate-100 truncate">{row.productName}</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
-                            <Clock size={10} />
-                            Last bought {row.daysSinceLast === 0 ? 'today' : `${row.daysSinceLast}d ago`} · {IST_DATE_FORMATTER.format(row.lastBought)}
-                          </div>
-                          {row.avgInterval !== null && (
-                            <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                              Avg every {row.avgInterval} day{row.avgInterval !== 1 ? 's' : ''}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex-shrink-0 ml-3">
-                        {row.dueSoon && row.avgInterval !== null ? (
-                          <span className="text-xs font-semibold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full whitespace-nowrap">
-                            Due soon
-                          </span>
-                        ) : row.avgInterval !== null ? (
-                          <span className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">
-                            {Math.max(0, row.avgInterval - row.daysSinceLast)}d left
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-300 dark:text-slate-600 whitespace-nowrap">1 purchase</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <RefreshCw size={14} className="text-slate-500 dark:text-slate-400" />
+                <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">Restock Insights</div>
+                <span className="ml-auto text-xs text-slate-400">
+                  {productId ? 'Selected product only' : 'Select a saved product'}
+                </span>
               </div>
-            )}
+
+              {!productId && (
+                <div className="text-sm text-slate-400 dark:text-slate-500">
+                  Choose a saved product from Add Purchase to view its restock analysis.
+                </div>
+              )}
+
+              {productId && !selectedRestockInsight && (
+                <div className="text-sm text-slate-400 dark:text-slate-500">
+                  No purchase history found for this product yet.
+                </div>
+              )}
+
+              {selectedRestockInsight && (
+                <div
+                  className={`flex items-start justify-between p-3 rounded-md border ${
+                    selectedRestockInsight.dueSoon
+                      ? 'border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800'
+                      : 'border-slate-100 dark:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-start gap-2 min-w-0">
+                    {selectedRestockInsight.dueSoon
+                      ? <AlertTriangle size={13} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                      : <TrendingDown size={13} className="text-slate-400 flex-shrink-0 mt-0.5" />
+                    }
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium text-slate-800 dark:text-slate-100 truncate">{selectedRestockInsight.productName}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Price: ₹{selectedRestockInsight.productPrice.toFixed(2)}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1">
+                        <Clock size={10} />
+                        Last bought {selectedRestockInsight.daysSinceLast === 0 ? 'today' : `${selectedRestockInsight.daysSinceLast}d ago`} · {IST_DATE_FORMATTER.format(selectedRestockInsight.lastBought)}
+                      </div>
+                      {selectedRestockInsight.avgInterval !== null && (
+                        <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                          Avg every {selectedRestockInsight.avgInterval} day{selectedRestockInsight.avgInterval !== 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 ml-3">
+                    {selectedRestockInsight.dueSoon && selectedRestockInsight.avgInterval !== null ? (
+                      <span className="text-xs font-semibold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                        Due soon
+                      </span>
+                    ) : selectedRestockInsight.avgInterval !== null ? (
+                      <span className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                        {Math.max(0, selectedRestockInsight.avgInterval - selectedRestockInsight.daysSinceLast)}d left
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-300 dark:text-slate-600 whitespace-nowrap">1 purchase</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
