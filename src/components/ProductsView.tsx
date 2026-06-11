@@ -172,7 +172,7 @@ function ProductsView({
       subtext={
         search || filterCategory || filterPage || filterTag || filterCompany
           ? 'Try adjusting your search or filters.'
-          : 'Start adding products you want to track or buy later.'
+          : 'Start adding items you want to track and organize.'
       }
       actionLabel={search || filterCategory || filterPage || filterTag || filterCompany ? 'Add Product' : 'Add your first product'}
     />

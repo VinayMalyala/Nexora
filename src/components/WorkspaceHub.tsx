@@ -65,7 +65,7 @@ export default memo(function WorkspaceHub({ onNavigate }: WorkspaceHubProps) {
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
           <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Workspace</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Your personal productivity hub.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Organize products, expenses, wardrobe, and goals in one place.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 
 const PAGE_PRESETS = [
-  { name: 'My Wishlist', icon: '⭐', color: '#f59e0b' },
+  { name: 'My Essentials', icon: '⭐', color: '#f59e0b' },
   { name: 'Electronics', icon: '💻', color: '#3b82f6' },
   { name: 'Personal Care', icon: '🌿', color: '#10b981' },
   { name: 'Clothes', icon: '👕', color: '#ec4899' },

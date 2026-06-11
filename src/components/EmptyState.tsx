@@ -10,7 +10,7 @@ interface EmptyStateProps {
 
 function EmptyState({
   message = 'No products yet',
-  subtext = 'Start adding products you want to track or buy later.',
+  subtext = 'Start adding items you want to track and organize.',
   onAdd,
   actionLabel = 'Add your first product',
 }: EmptyStateProps) {
