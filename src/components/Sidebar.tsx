@@ -3,6 +3,7 @@ import {
   Home,
   Clock,
   Heart,
+  LayoutGrid,
   ChevronDown,
   ChevronRight,
   Plus,
@@ -217,6 +218,24 @@ function Sidebar({
 
       {/* Footer */}
       <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-700 space-y-2">
+        <button
+          onClick={() => { onNavigate('workspace'); setMobileOpen(false); }}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150 ${
+            activeView === 'workspace' || activeView === 'goals'
+              ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
+          }`}
+        >
+          <span className={`flex-shrink-0 ${
+            activeView === 'workspace' || activeView === 'goals'
+              ? 'text-amber-600 dark:text-amber-400'
+              : 'text-slate-500 dark:text-slate-400'
+          }`}>
+            <LayoutGrid size={14} />
+          </span>
+          <span className="flex-1 text-left">Workspace</span>
+        </button>
+
         <button
           onClick={() => { onNavigate('monthly-expenses'); setMobileOpen(false); }}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150 ${

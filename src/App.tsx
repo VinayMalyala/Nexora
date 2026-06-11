@@ -4,6 +4,8 @@ import ProductsView from './components/ProductsView';
 import PriceTracker from './components/PriceTracker';
 import MonthlyExpenses from './components/MonthlyExpenses';
 import ProfilePage from './components/ProfilePage';
+import WorkspaceHub from './components/WorkspaceHub';
+import GoalsPage from './components/GoalsPage';
 import AddPageModal from './components/AddPageModal';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
@@ -217,7 +219,11 @@ function AppContent({
       />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {activeView === 'price-tracker' ? (
+        {activeView === 'workspace' ? (
+          <WorkspaceHub onNavigate={handleNavigate} />
+        ) : activeView === 'goals' ? (
+          <GoalsPage userId={currentUser.id} />
+        ) : activeView === 'price-tracker' ? (
           <PriceTracker products={allProducts} loading={loading} />
         ) : activeView === 'monthly-expenses' ? (
           <MonthlyExpenses products={allProducts} loading={loading} userId={currentUser.id} />
@@ -658,7 +664,9 @@ export default function App() {
   );
 
   const handleLogout = useCallback(() => {
-    void supabase.auth.signOut();
+    void supabase.auth.signOut().then(({ error }) => {
+      if (error) console.error('[Nexora] Sign out error:', error.message);
+    });
   }, []);
 
   const handleUpdateProfile = useCallback(
@@ -764,7 +772,7 @@ export default function App() {
     }
   }, [migrationChecklist]);
 
-  const diagnosticsPanel = schemaHealth.status === 'ok' ? null : (
+  const diagnosticsPanel = (import.meta.env.DEV && schemaHealth.status !== 'ok') ? (
     <div className="fixed bottom-4 right-4 z-50 max-w-md rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-lg">
       <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Startup Health Check</h3>
       {schemaHealth.status === 'checking' ? (
@@ -807,7 +815,7 @@ export default function App() {
         </div>
       ) : null}
     </div>
-  );
+  ) : null;
 
   if (authLoading) {
     return (

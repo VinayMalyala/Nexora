@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ExternalLink, Tag, Trash2, Edit3, TrendingDown, ShoppingBag, Heart } from 'lucide-react';
 import type { Product, Page } from '../types';
 
@@ -16,7 +16,18 @@ interface ProductCardProps {
 
 function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit, onToggleFavorite }: ProductCardProps) {
   const [imageError, setImageError] = useState(false);
-  const [togglingFav, setTogglingFav] = useState(false);
+  // Local state ensures the heart flips in the same frame as the click,
+  // independent of the parent re-render cycle.
+  const [isFavorite, setIsFavorite] = useState(product.is_favorite);
+  const inFlightRef = useRef(false);
+
+  // Sync with external prop changes (e.g. data reload, navigation back)
+  // but skip during an in-flight toggle to avoid flickering back.
+  useEffect(() => {
+    if (!inFlightRef.current) {
+      setIsFavorite(product.is_favorite);
+    }
+  }, [product.is_favorite]);
 
   const discount = useMemo(
     () =>
@@ -33,13 +44,16 @@ function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit, onToggle
 
   const handleDelete = useCallback(() => onDelete(product.id), [onDelete, product.id]);
   const handleEdit = useCallback(() => onEdit(product), [onEdit, product]);
-  const handleToggleFavorite = useCallback(async (e: React.MouseEvent) => {
+  const handleToggleFavorite = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    if (togglingFav) return;
-    setTogglingFav(true);
-    await onToggleFavorite(product.id, !product.is_favorite);
-    setTogglingFav(false);
-  }, [onToggleFavorite, product.id, product.is_favorite, togglingFav]);
+    if (inFlightRef.current) return;
+    const next = !isFavorite;
+    // Flip visually right away — no await, no state gate.
+    setIsFavorite(next);
+    inFlightRef.current = true;
+    const settle = () => { inFlightRef.current = false; };
+    void Promise.resolve(onToggleFavorite(product.id, next)).then(settle, settle);
+  }, [isFavorite, onToggleFavorite, product.id]);
 
   return (
     <div className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-all duration-200 overflow-hidden flex flex-col hover:shadow-lg">
@@ -97,17 +111,16 @@ function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit, onToggle
             </div>
             <button
               onClick={handleToggleFavorite}
-              disabled={togglingFav}
-              title={product.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+              title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
               className={`flex-shrink-0 p-1 rounded-full transition-colors duration-150 ${
-                product.is_favorite
+                isFavorite
                   ? 'text-red-500 hover:text-red-400'
                   : 'text-slate-300 dark:text-slate-600 hover:text-red-400'
               }`}
             >
               <Heart
                 size={14}
-                fill={product.is_favorite ? 'currentColor' : 'none'}
+                fill={isFavorite ? 'currentColor' : 'none'}
                 strokeWidth={2}
               />
             </button>
@@ -117,17 +130,16 @@ function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit, onToggle
           <div className="flex justify-end">
             <button
               onClick={handleToggleFavorite}
-              disabled={togglingFav}
-              title={product.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+              title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
               className={`p-1 rounded-full transition-colors duration-150 ${
-                product.is_favorite
+                isFavorite
                   ? 'text-red-500 hover:text-red-400'
                   : 'text-slate-300 dark:text-slate-600 hover:text-red-400'
               }`}
             >
               <Heart
                 size={14}
-                fill={product.is_favorite ? 'currentColor' : 'none'}
+                fill={isFavorite ? 'currentColor' : 'none'}
                 strokeWidth={2}
               />
             </button>

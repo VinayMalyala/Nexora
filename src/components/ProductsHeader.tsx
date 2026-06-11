@@ -40,12 +40,12 @@ function ProductsHeader({
   showPageFilter = false,
 }: ProductsHeaderProps) {
   const [showFilters, setShowFilters] = useState(false);
-  const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [pendingCategory, setPendingCategory] = useState(activeCategory);
   const [pendingPage, setPendingPage] = useState(activePage);
   const [pendingTag, setPendingTag] = useState(activeTag);
   const [pendingCompany, setPendingCompany] = useState(activeCompany);
   const [companyQuery, setCompanyQuery] = useState('');
+  const [tagQuery, setTagQuery] = useState('');
 
   useEffect(() => {
     if (!showFilters) {
@@ -57,8 +57,14 @@ function ProductsHeader({
     setPendingTag(activeTag);
     setPendingCompany(activeCompany);
     setCompanyQuery('');
-    setShowTagDropdown(false);
+    setTagQuery('');
   }, [showFilters, activeCategory, activePage, activeTag, activeCompany]);
+
+  const filteredTags = useMemo(() => {
+    const q = tagQuery.trim().toLowerCase();
+    if (!q) return availableTags;
+    return availableTags.filter(tag => tag.toLowerCase().includes(q));
+  }, [availableTags, tagQuery]);
 
   const filteredCompanies = useMemo(() => {
     const q = companyQuery.trim().toLowerCase();
@@ -217,7 +223,7 @@ function ProductsHeader({
                         </button>
                       </div>
 
-                      <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100 bg-white">
+                      <div className="h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100 bg-white">
                         {filteredCompanies.length > 0 ? (
                           filteredCompanies.map(company => (
                             <button
@@ -253,41 +259,54 @@ function ProductsHeader({
                 {availableTags.length > 0 && (
                   <div className="flex flex-col gap-1.5">
                     <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">Tags</span>
-                    <div className="relative">
-                      <button
-                        onClick={() => setShowTagDropdown(!showTagDropdown)}
-                        className="flex items-center gap-2 px-3 py-2 text-xs border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 dark:text-slate-300 transition-colors w-full text-left"
-                      >
-                        <Tag size={12} />
-                        <span className="flex-1">{pendingTag ? `Tag: ${pendingTag}` : 'Select a tag...'}</span>
-                      </button>
-                      {showTagDropdown && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
-                          <button
-                            onClick={() => {
-                              setPendingTag('');
-                              setShowTagDropdown(false);
-                            }}
-                            className={`w-full px-3 py-2 text-xs text-left hover:bg-slate-100 dark:hover:bg-slate-600 dark:text-slate-300 transition-colors ${!pendingTag ? 'bg-amber-50 dark:bg-amber-900/20' : ''}`}
-                          >
-                            Clear Tag Filter
-                          </button>
-                          {availableTags.map(tag => (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={tagQuery}
+                          onChange={e => setTagQuery(e.target.value)}
+                          placeholder="Search tag..."
+                          className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPendingTag('');
+                            setTagQuery('');
+                          }}
+                          className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
+                            !pendingTag ? 'bg-amber-400 text-white border-amber-400' : 'border-slate-200 text-slate-600 hover:border-amber-300'
+                          }`}
+                        >
+                          All
+                        </button>
+                      </div>
+
+                      <div className="h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100 bg-white">
+                        {filteredTags.length > 0 ? (
+                          filteredTags.map(tag => (
                             <button
                               key={tag}
-                              onClick={() => {
-                                setPendingTag(tag === pendingTag ? '' : tag);
-                                setShowTagDropdown(false);
-                              }}
-                              className={`w-full px-3 py-2 text-xs text-left hover:bg-slate-100 dark:hover:bg-slate-600 dark:text-slate-300 transition-colors flex items-center gap-2 ${
-                                pendingTag === tag ? 'bg-amber-50 dark:bg-amber-900/20 font-semibold' : ''
+                              type="button"
+                              onClick={() => setPendingTag(tag === pendingTag ? '' : tag)}
+                              className={`w-full px-3 py-2 text-xs text-left transition-colors flex items-center gap-2 ${
+                                pendingTag === tag
+                                  ? 'bg-amber-50 text-amber-700 font-semibold'
+                                  : 'text-slate-600 hover:bg-slate-50'
                               }`}
                             >
-                              <Tag size={10} />
-                              {tag}
+                              <Tag size={10} className="flex-shrink-0" />
+                              <span className="block truncate">{tag}</span>
                             </button>
-                          ))}
-                        </div>
+                          ))
+                        ) : (
+                          <p className="px-3 py-2 text-xs text-slate-500">No matching tag found.</p>
+                        )}
+                      </div>
+
+                      {pendingTag && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Selected: <span className="font-medium text-slate-700 dark:text-slate-200">{pendingTag}</span>
+                        </p>
                       )}
                     </div>
                   </div>
@@ -302,7 +321,7 @@ function ProductsHeader({
                     setPendingPage('');
                     setPendingTag('');
                     setPendingCompany('');
-                    setShowTagDropdown(false);
+                    setTagQuery('');
                   }}
                   className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                 >

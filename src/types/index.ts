@@ -46,6 +46,17 @@ export interface UserAccount extends User {
   password: string;
 }
 
+export interface Todo {
+  id: string;
+  user_id: string;
+  title: string;
+  notes: string;
+  timeframe: 'day' | 'week' | 'month';
+  completed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Expense {
   id: string;
   user_id: string;
@@ -57,7 +68,7 @@ export interface Expense {
   created_at?: string;
 }
 
-export type ViewMode = 'home' | 'recents' | 'favorites' | 'page' | 'price-tracker' | 'monthly-expenses' | 'profile';
+export type ViewMode = 'home' | 'recents' | 'favorites' | 'workspace' | 'goals' | 'page' | 'price-tracker' | 'monthly-expenses' | 'profile';
 
 export const CATEGORIES = [
   'Personal Care',

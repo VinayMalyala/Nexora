@@ -167,10 +167,11 @@ export function useProducts(userId?: string | null) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const [favoriteFallback, setFavoriteFallback] = useState<Record<string, boolean>>({});
+  // A ref (not state) so that updating it never recreates fetchProducts or triggers re-fetches.
+  const favoriteFallbackRef = useRef<Record<string, boolean>>(readFavoriteFallback(userId));
 
   useEffect(() => {
-    setFavoriteFallback(readFavoriteFallback(userId));
+    favoriteFallbackRef.current = readFavoriteFallback(userId);
   }, [userId]);
 
   const fetchProducts = useCallback(async () => {
@@ -200,11 +201,11 @@ export function useProducts(userId?: string | null) {
       setError(productError.message);
     } else if (data) {
       const mapped = data.map(mapProductRow);
-      setProducts(applyFavoriteOverrides(mapped, favoriteFallback));
+      setProducts(applyFavoriteOverrides(mapped, favoriteFallbackRef.current));
     }
 
     setLoading(false);
-  }, [favoriteFallback, userId]);
+  }, [userId]);
 
   useEffect(() => {
     fetchProducts();
@@ -252,6 +253,7 @@ export function useProducts(userId?: string | null) {
         company: data.company ?? '',
         quantity_value: data.quantity_value ?? null,
         quantity_unit: (data.quantity_unit as Product['quantity_unit']) ?? null,
+        is_favorite: (data as Record<string, unknown>).is_favorite === true,
         tags,
       };
       setProducts(prev => [next, ...prev]);
@@ -345,13 +347,10 @@ export function useProducts(userId?: string | null) {
     let { error } = userId ? await query.eq('user_id', userId) : await query;
 
     if (error && isMissingFavoriteColumnError(error.message)) {
-      // If schema cache lags behind migration, keep app behavior stable using local fallback.
-      setFavoriteFallback(prev => {
-        const next = { ...prev, [id]: isFavorite };
-        writeFavoriteFallback(userId, next);
-        return next;
-      });
-      setError('Favorites are saved locally until database schema cache catches up.');
+      // Schema cache lags behind migration — persist locally so favorites survive navigation.
+      const next = { ...favoriteFallbackRef.current, [id]: isFavorite };
+      favoriteFallbackRef.current = next;
+      writeFavoriteFallback(userId, next);
       return { error: null };
     }
 
@@ -366,14 +365,13 @@ export function useProducts(userId?: string | null) {
       return { error };
     }
 
-    // Persisted successfully — clear any fallback override for this product.
-    setFavoriteFallback(prev => {
-      if (!Object.prototype.hasOwnProperty.call(prev, id)) return prev;
-      const next = { ...prev };
+    // Persisted successfully — clear any local fallback override for this product.
+    if (Object.prototype.hasOwnProperty.call(favoriteFallbackRef.current, id)) {
+      const next = { ...favoriteFallbackRef.current };
       delete next[id];
+      favoriteFallbackRef.current = next;
       writeFavoriteFallback(userId, next);
-      return next;
-    });
+    }
 
     return { error: null };
   }, [userId]);

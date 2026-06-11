@@ -70,6 +70,13 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile, is
     setAvatarLoadError(false);
   }, [avatarSource]);
 
+  // Auto-clear success banner after 4 seconds.
+  useEffect(() => {
+    if (!success) return;
+    const timer = window.setTimeout(() => setSuccess(''), 4000);
+    return () => window.clearTimeout(timer);
+  }, [success]);
+
   const handleCancel = () => {
     setIsEditing(false);
     setError('');
@@ -107,25 +114,29 @@ export default function ProfilePage({ currentUser, onLogout, onUpdateProfile, is
     setSuccess('');
     setSaving(true);
 
-    const result = await onUpdateProfile({
-      profilePictureUrl: normalizeImageUrl(form.profilePictureUrl),
-      name: form.name,
-      email: form.email,
-      phone: form.phone,
-      bio: form.bio,
-      password: form.password || undefined,
-    });
+    try {
+      const result = await onUpdateProfile({
+        profilePictureUrl: normalizeImageUrl(form.profilePictureUrl),
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        bio: form.bio,
+        password: form.password || undefined,
+      });
 
-    setSaving(false);
+      if (result.status === 'invalid') {
+        setError(result.message ?? 'Unable to update profile.');
+        return;
+      }
 
-    if (result.status === 'invalid') {
-      setError(result.message ?? 'Unable to update profile.');
-      return;
+      setSuccess('Profile updated successfully.');
+      setIsEditing(false);
+      setForm(current => ({ ...current, password: '', confirmPassword: '' }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update profile. Please try again.');
+    } finally {
+      setSaving(false);
     }
-
-    setSuccess('Profile updated successfully.');
-    setIsEditing(false);
-    setForm(current => ({ ...current, password: '', confirmPassword: '' }));
   };
 
   const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
