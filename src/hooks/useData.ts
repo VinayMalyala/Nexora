@@ -192,6 +192,7 @@ export function useProducts(userId?: string | null) {
       .from('products')
       .select('*, product_tags(tag)')
       .eq('user_id', userId)
+      .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false })
       .abortSignal(controller.signal);
 
@@ -221,7 +222,11 @@ export function useProducts(userId?: string | null) {
       }
 
       setError(null);
-      const insertPayload = { ...product, sort_order: 0, user_id: userId };
+      const nextSortOrder = products.length > 0
+        ? Math.max(...products.map(item => item.sort_order ?? 0)) + 1
+        : 0;
+
+      const insertPayload = { ...product, sort_order: nextSortOrder, user_id: userId };
 
       let response = await supabase
         .from('products')
@@ -256,10 +261,10 @@ export function useProducts(userId?: string | null) {
         is_favorite: (data as Record<string, unknown>).is_favorite === true,
         tags,
       };
-      setProducts(prev => [next, ...prev]);
+      setProducts(prev => [...prev, next]);
       return { data: next, error: null };
     },
-    [userId]
+    [products, userId]
   );
 
   const updateProduct = useCallback(
@@ -376,6 +381,57 @@ export function useProducts(userId?: string | null) {
     return { error: null };
   }, [userId]);
 
+  const reorderProducts = useCallback(async (orderedIds: string[]) => {
+    if (orderedIds.length === 0) {
+      return { error: null };
+    }
+
+    setError(null);
+    const previousProducts = products;
+    const orderIndex = new Map(orderedIds.map((id, index) => [id, index]));
+
+    const optimistic = [...products].sort((a, b) => {
+      const aIndex = orderIndex.get(a.id);
+      const bIndex = orderIndex.get(b.id);
+
+      if (aIndex !== undefined && bIndex !== undefined) return aIndex - bIndex;
+      if (aIndex !== undefined) return -1;
+      if (bIndex !== undefined) return 1;
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    }).map((product, index) => ({ ...product, sort_order: index }));
+
+    setProducts(optimistic);
+
+    const updates = optimistic.map(product => ({ id: product.id, sort_order: product.sort_order }));
+
+    try {
+      const responses = await Promise.all(
+        updates.map(update => {
+          const query = supabase
+            .from('products')
+            .update({ sort_order: update.sort_order, updated_at: new Date().toISOString() })
+            .eq('id', update.id);
+
+          return userId ? query.eq('user_id', userId) : query;
+        })
+      );
+
+      const failed = responses.find(response => response.error);
+      if (failed?.error) {
+        setProducts(previousProducts);
+        setError(failed.error.message);
+        return { error: failed.error };
+      }
+
+      return { error: null };
+    } catch (error) {
+      setProducts(previousProducts);
+      const normalized = error instanceof Error ? error.message : 'Failed to reorder products';
+      setError(normalized);
+      return { error: { message: normalized } };
+    }
+  }, [products, userId]);
+
   return {
     products,
     loading,
@@ -385,6 +441,7 @@ export function useProducts(userId?: string | null) {
     updateProduct,
     deleteProduct,
     toggleFavorite,
+    reorderProducts,
   };
 }
 

@@ -117,7 +117,7 @@ function AppContent({
   const isPage = activeView === 'page';
 
   // Single fetch for all products — filtered client-side to avoid multiple Supabase calls
-  const { products: allProducts, loading, addProduct, updateProduct, deleteProduct, toggleFavorite } = useProducts(currentUser.id);
+  const { products: allProducts, loading, addProduct, updateProduct, deleteProduct, toggleFavorite, reorderProducts } = useProducts(currentUser.id);
 
   const products = useMemo(() => {
     if (isRecents) return allProducts.slice(0, 20);
@@ -153,6 +153,16 @@ function AppContent({
       await toggleFavorite(id, isFavorite);
     },
     [toggleFavorite]
+  );
+
+  const handleReorderProducts = useCallback(
+    async (orderedIds: string[]) => {
+      const { error } = await reorderProducts(orderedIds);
+      if (error) {
+        throw new Error(error.message);
+      }
+    },
+    [reorderProducts]
   );
 
   const handleDeletePage = useCallback(
@@ -241,6 +251,7 @@ function AppContent({
             onAdd={handleSave}
             onDelete={deleteProduct}
             onToggleFavorite={handleToggleFavorite}
+            onReorder={activeView === 'home' ? handleReorderProducts : undefined}
           />
         )}
       </main>

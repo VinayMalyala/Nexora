@@ -16,6 +16,7 @@ interface ProductsViewProps {
   onAdd: (data: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'tags' | 'sort_order'>, tags: string[], editId?: string) => Promise<void>;
   onDelete: (id: string) => void;
   onToggleFavorite: (id: string, isFavorite: boolean) => void;
+  onReorder?: (orderedIds: string[]) => Promise<void>;
 }
 
 function ProductsView({
@@ -29,6 +30,7 @@ function ProductsView({
   onAdd,
   onDelete,
   onToggleFavorite,
+  onReorder,
 }: ProductsViewProps) {
   const [showModal, setShowModal] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
@@ -37,6 +39,8 @@ function ProductsView({
   const [filterPage, setFilterPage] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [filterCompany, setFilterCompany] = useState('');
+  const [draggingProductId, setDraggingProductId] = useState<string | null>(null);
+  const [dropTargetProductId, setDropTargetProductId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     return products.filter(p => {
@@ -71,6 +75,16 @@ function ProductsView({
     filtered.reduce((acc, p) => acc + p.price, 0).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })
   } total`;
 
+  const canReorder = Boolean(
+    onReorder &&
+    filtered.length > 1 &&
+    !search &&
+    !filterCategory &&
+    !filterPage &&
+    !filterTag &&
+    !filterCompany
+  );
+
   const handleApplyFilters = useCallback(
     ({ category, pageId, tag, company }: { category: string; pageId: string; tag: string; company: string }) => {
       setFilterCategory(category);
@@ -95,6 +109,44 @@ function ProductsView({
     setShowModal(false);
     setEditProduct(null);
   }, []);
+
+  const handleDragStart = useCallback((productId: string) => {
+    if (!canReorder) return;
+    setDraggingProductId(productId);
+    setDropTargetProductId(productId);
+  }, [canReorder]);
+
+  const handleDragOver = useCallback((productId: string) => {
+    if (!canReorder || !draggingProductId || draggingProductId === productId) return;
+    setDropTargetProductId(productId);
+  }, [canReorder, draggingProductId]);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggingProductId(null);
+    setDropTargetProductId(null);
+  }, []);
+
+  const handleDrop = useCallback(async (productId: string) => {
+    if (!canReorder || !draggingProductId || draggingProductId === productId || !onReorder) {
+      handleDragEnd();
+      return;
+    }
+
+    const sourceIndex = filtered.findIndex(product => product.id === draggingProductId);
+    const targetIndex = filtered.findIndex(product => product.id === productId);
+
+    if (sourceIndex === -1 || targetIndex === -1) {
+      handleDragEnd();
+      return;
+    }
+
+    const reordered = [...filtered];
+    const [moved] = reordered.splice(sourceIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+
+    await onReorder(reordered.map(product => product.id));
+    handleDragEnd();
+  }, [canReorder, draggingProductId, filtered, handleDragEnd, onReorder]);
 
   const content = loading ? (
     <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
@@ -136,6 +188,13 @@ function ProductsView({
             onDelete={onDelete}
             onEdit={handleEditProduct}
             onToggleFavorite={onToggleFavorite}
+            draggable={canReorder}
+            isDragging={draggingProductId === product.id}
+            isDropTarget={dropTargetProductId === product.id && draggingProductId !== product.id}
+            onDragStart={() => handleDragStart(product.id)}
+            onDragOver={() => handleDragOver(product.id)}
+            onDrop={() => void handleDrop(product.id)}
+            onDragEnd={handleDragEnd}
           />
         ))}
       </div>

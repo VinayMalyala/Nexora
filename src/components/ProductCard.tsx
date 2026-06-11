@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ExternalLink, Tag, Trash2, Edit3, TrendingDown, ShoppingBag, Heart } from 'lucide-react';
+import { ExternalLink, Tag, Trash2, Edit3, TrendingDown, ShoppingBag, Heart, GripVertical } from 'lucide-react';
 import type { Product, Page } from '../types';
 
 const formatPrice = (price: number) =>
@@ -12,10 +12,32 @@ interface ProductCardProps {
   onDelete: (id: string) => void;
   onEdit: (product: Product) => void;
   onToggleFavorite: (id: string, isFavorite: boolean) => void;
+  draggable?: boolean;
+  isDragging?: boolean;
+  isDropTarget?: boolean;
+  onDragStart?: () => void;
+  onDragOver?: () => void;
+  onDrop?: () => void;
+  onDragEnd?: () => void;
 }
 
-function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit, onToggleFavorite }: ProductCardProps) {
+function ProductCard({
+  product,
+  pages,
+  hidePageBadge,
+  onDelete,
+  onEdit,
+  onToggleFavorite,
+  draggable,
+  isDragging,
+  isDropTarget,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+}: ProductCardProps) {
   const [imageError, setImageError] = useState(false);
+  const [dragArmed, setDragArmed] = useState(false);
   // Local state ensures the heart flips in the same frame as the click,
   // independent of the parent re-render cycle.
   const [isFavorite, setIsFavorite] = useState(product.is_favorite);
@@ -55,8 +77,47 @@ function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit, onToggle
     void Promise.resolve(onToggleFavorite(product.id, next)).then(settle, settle);
   }, [isFavorite, onToggleFavorite, product.id]);
 
+  const handleDragStart = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    if (!draggable || !onDragStart) return;
+    e.dataTransfer.effectAllowed = 'move';
+    onDragStart();
+  }, [draggable, onDragStart]);
+
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    if (!draggable || !onDragOver) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    onDragOver();
+  }, [draggable, onDragOver]);
+
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    if (!draggable || !onDrop) return;
+    e.preventDefault();
+    onDrop();
+  }, [draggable, onDrop]);
+
+  const handleDragEnd = useCallback(() => {
+    setDragArmed(false);
+    onDragEnd?.();
+  }, [onDragEnd]);
+
   return (
-    <div className="group bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm transition-all duration-200 overflow-hidden flex flex-col hover:shadow-lg">
+    <div
+      draggable={Boolean(draggable && dragArmed)}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      onDragEnd={handleDragEnd}
+      className={`group bg-white dark:bg-slate-800 rounded-2xl border shadow-sm transition-all duration-200 overflow-hidden flex flex-col hover:shadow-lg ${
+        draggable ? 'cursor-default' : ''
+      } ${
+        isDragging ? 'opacity-60 scale-[0.99]' : ''
+      } ${
+        isDropTarget
+          ? 'border-amber-400 ring-2 ring-amber-200 dark:ring-amber-900/50'
+          : 'border-slate-100 dark:border-slate-700'
+      }`}
+    >
       <div className="relative bg-white h-[120px] sm:h-[150px] overflow-hidden">
         {!imageError && product.image_url ? (
           <img
@@ -84,6 +145,21 @@ function ProductCard({ product, pages, hidePageBadge, onDelete, onEdit, onToggle
             style={{ borderColor: `${page.color}40`, color: page.color }}
           >
             {page.icon} {page.name}
+          </div>
+        )}
+
+        {draggable && (
+          <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <button
+              type="button"
+              title="Drag to reorder"
+              onMouseDown={() => setDragArmed(true)}
+              onMouseUp={() => setDragArmed(false)}
+              onMouseLeave={() => setDragArmed(false)}
+              className="p-1.5 bg-white dark:bg-slate-700 rounded-lg shadow-sm border border-slate-100 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:text-amber-600 hover:border-amber-200 transition-colors cursor-grab active:cursor-grabbing"
+            >
+              <GripVertical size={13} />
+            </button>
           </div>
         )}
 

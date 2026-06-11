@@ -96,7 +96,7 @@ function Sidebar({
           </div>
           <div className="hidden sm:block">
             <h1 className="text-base font-bold text-slate-800 dark:text-slate-100 leading-tight">Nexora</h1>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Your wishlist</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Your shopping workspace</p>
           </div>
         </button>
         <div className="flex items-center gap-1">
