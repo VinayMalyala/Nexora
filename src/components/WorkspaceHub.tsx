@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Target, BookOpen, ArrowLeftRight, BarChart3, ChevronRight } from 'lucide-react';
+import { Target, Shirt, ArrowLeftRight, BarChart3, ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ViewMode } from '../types';
 
@@ -30,13 +30,14 @@ const CARDS: WorkspaceCard[] = [
     cardClass: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700',
   },
   {
-    title: 'Journal',
-    description: 'Capture thoughts, ideas, and daily reflections.',
-    icon: BookOpen,
+    title: 'Wardrobe',
+    description: 'Plan outfits with smart non-repeating combinations.',
+    icon: Shirt,
     gradient: 'from-blue-400 to-indigo-500',
-    active: false,
-    textColor: '',
-    cardClass: 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60',
+    active: true,
+    viewMode: 'wardrobe',
+    textColor: 'text-blue-600 dark:text-blue-400',
+    cardClass: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700',
   },
   {
     title: 'Compare',

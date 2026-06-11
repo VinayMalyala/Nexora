@@ -57,6 +57,26 @@ export interface Todo {
   updated_at: string;
 }
 
+export interface WardrobeCombination {
+  id: string;
+  user_id: string;
+  name: string;
+  shirt: string;
+  pants: string;
+  notes: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WardrobeWear {
+  id: string;
+  user_id: string;
+  combination_id: string;
+  wear_date: string;
+  created_at: string;
+}
+
 export interface Expense {
   id: string;
   user_id: string;
@@ -68,7 +88,7 @@ export interface Expense {
   created_at?: string;
 }
 
-export type ViewMode = 'home' | 'recents' | 'favorites' | 'workspace' | 'goals' | 'page' | 'price-tracker' | 'monthly-expenses' | 'profile';
+export type ViewMode = 'home' | 'recents' | 'favorites' | 'workspace' | 'goals' | 'wardrobe' | 'page' | 'price-tracker' | 'monthly-expenses' | 'profile';
 
 export const CATEGORIES = [
   'Personal Care',

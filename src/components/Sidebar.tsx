@@ -221,13 +221,13 @@ function Sidebar({
         <button
           onClick={() => { onNavigate('workspace'); setMobileOpen(false); }}
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-150 ${
-            activeView === 'workspace' || activeView === 'goals'
+            activeView === 'workspace' || activeView === 'goals' || activeView === 'wardrobe'
               ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
               : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
           }`}
         >
           <span className={`flex-shrink-0 ${
-            activeView === 'workspace' || activeView === 'goals'
+            activeView === 'workspace' || activeView === 'goals' || activeView === 'wardrobe'
               ? 'text-amber-600 dark:text-amber-400'
               : 'text-slate-500 dark:text-slate-400'
           }`}>

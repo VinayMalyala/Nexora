@@ -6,6 +6,7 @@ import MonthlyExpenses from './components/MonthlyExpenses';
 import ProfilePage from './components/ProfilePage';
 import WorkspaceHub from './components/WorkspaceHub';
 import GoalsPage from './components/GoalsPage';
+import WardrobePage from './components/WardrobePage';
 import AddPageModal from './components/AddPageModal';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
@@ -233,6 +234,8 @@ function AppContent({
           <WorkspaceHub onNavigate={handleNavigate} />
         ) : activeView === 'goals' ? (
           <GoalsPage userId={currentUser.id} />
+        ) : activeView === 'wardrobe' ? (
+          <WardrobePage userId={currentUser.id} />
         ) : activeView === 'price-tracker' ? (
           <PriceTracker products={allProducts} loading={loading} />
         ) : activeView === 'monthly-expenses' ? (
