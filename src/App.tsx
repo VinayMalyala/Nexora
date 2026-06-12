@@ -372,6 +372,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [displayedProgress, setDisplayedProgress] = useState(0);
   const authBootstrapCompleteRef = useRef(false);
   const [copiedChecklist, setCopiedChecklist] = useState(false);
   const [isDark, toggleDark] = useDarkMode();
@@ -443,6 +444,76 @@ export default function App() {
       bio: profile.bio,
     } as User;
   }, []);
+
+  useEffect(() => {
+    let canceled = false;
+    let activeRaf: number | null = null;
+    const timeouts: number[] = [];
+    let progressValue = displayedProgress;
+
+    const updateProgress = (value: number) => {
+      progressValue = value;
+      setDisplayedProgress(value);
+    };
+
+    const animateTo = (target: number, durationMs: number, delayMs = 0) => {
+      const timeoutId = window.setTimeout(() => {
+        if (canceled) return;
+
+        const startValue = progressValue;
+        const delta = target - startValue;
+        const startTs = performance.now();
+
+        const step = (ts: number) => {
+          if (canceled) return;
+          const elapsed = ts - startTs;
+          const t = Math.min(elapsed / durationMs, 1);
+          const next = Math.round(startValue + delta * t);
+          updateProgress(next);
+          if (t < 1) {
+            activeRaf = window.requestAnimationFrame(step);
+          }
+        };
+
+        activeRaf = window.requestAnimationFrame(step);
+      }, delayMs);
+
+      timeouts.push(timeoutId);
+    };
+
+    if (authLoading) {
+      updateProgress(0);
+      animateTo(15, 450, 0);
+      animateTo(70, 800, 2500);
+      animateTo(90, 700, 4300);
+    } else {
+      const start = progressValue;
+      const delta = 100 - start;
+      const durationMs = 250;
+      const startTs = performance.now();
+
+      const step = (ts: number) => {
+        if (canceled) return;
+        const elapsed = ts - startTs;
+        const t = Math.min(elapsed / durationMs, 1);
+        const next = Math.round(start + delta * t);
+        updateProgress(next);
+        if (t < 1) {
+          activeRaf = window.requestAnimationFrame(step);
+        }
+      };
+
+      activeRaf = window.requestAnimationFrame(step);
+    }
+
+    return () => {
+      canceled = true;
+      timeouts.forEach(timeoutId => window.clearTimeout(timeoutId));
+      if (activeRaf !== null) {
+        window.cancelAnimationFrame(activeRaf);
+      }
+    };
+  }, [authLoading]);
 
   useEffect(() => {
     let canceled = false;
@@ -611,8 +682,6 @@ export default function App() {
         }
       } catch (error) {
         console.error('Auth state change handling failed:', error);
-      } finally {
-        setAuthLoading(false);
       }
     });
 
@@ -963,8 +1032,48 @@ export default function App() {
   if (authLoading) {
     return (
       <>
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-          <p className="text-sm text-slate-500 dark:text-slate-400">Preparing your workspace...</p>
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center select-none">
+          {/* Outer pulse ring */}
+          <div className="relative flex items-center justify-center mb-8">
+            <span
+              className="nexora-pulse-ring absolute inline-block rounded-full"
+              style={{ width: 88, height: 88, background: 'radial-gradient(circle, rgba(251,146,60,0.18) 0%, transparent 70%)' }}
+            />
+            {/* Logo tile */}
+            <div
+              className="relative z-10 w-16 h-16 rounded-2xl flex items-center justify-center shadow-xl"
+              style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #f97316 100%)' }}
+            >
+              {/* Sparkles SVG */}
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2l1.4 4.3L18 7l-4.3 1.4L12 13l-1.4-4.6L6 7l4.6-1.4z" fill="white" stroke="none" />
+                <path d="M5 17l.7 2L8 20l-2 .7L5 23l-.7-2.3L2 20l2.3-.7z" fill="white" stroke="none" />
+                <path d="M19 3l.5 1.5L21 5l-1.5.5L19 7l-.5-1.5L17 5l1.5-.5z" fill="white" stroke="none" />
+              </svg>
+              {/* Shimmer overlay */}
+              <span className="nexora-shimmer-bar absolute inset-0 rounded-2xl" />
+            </div>
+          </div>
+
+          {/* Brand name */}
+          <h1 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 mb-1">Nexora</h1>
+          <p className="text-xs font-medium text-slate-400 dark:text-slate-500 mb-8 tracking-widest uppercase">Your personal life tracker</p>
+
+          {/* Progress bar track */}
+          <div className="w-48 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden mb-2">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500"
+              style={{ width: `${displayedProgress}%` }}
+            />
+          </div>
+          <p className="text-[10px] font-semibold tabular-nums text-slate-400 dark:text-slate-500 mb-5">{displayedProgress}%</p>
+
+          {/* Bouncing dots */}
+          <div className="flex items-center gap-1.5">
+            <span className="nexora-dot w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+            <span className="nexora-dot w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+            <span className="nexora-dot w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+          </div>
         </div>
         {diagnosticsPanel}
       </>

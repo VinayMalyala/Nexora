@@ -30,10 +30,86 @@
     @apply bg-slate-200 rounded-full;
   }
 
+  /* ── Splash loader animations ── */
+  @keyframes nexora-pulse-ring {
+    0%   { transform: scale(0.85); opacity: 0.7; }
+    50%  { transform: scale(1.08); opacity: 0.2; }
+    100% { transform: scale(0.85); opacity: 0.7; }
+  }
+  @keyframes nexora-shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+  @keyframes nexora-bounce-dot {
+    0%, 80%, 100% { transform: translateY(0);   opacity: 0.4; }
+    40%           { transform: translateY(-6px); opacity: 1;   }
+  }
+  .nexora-pulse-ring {
+    animation: nexora-pulse-ring 2s ease-in-out infinite;
+  }
+  .nexora-shimmer-bar {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255,255,255,0.55) 50%,
+      transparent 100%
+    );
+    background-size: 400px 100%;
+    animation: nexora-shimmer 1.6s ease-in-out infinite;
+  }
+  .dark .nexora-shimmer-bar {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255,255,255,0.12) 50%,
+      transparent 100%
+    );
+    background-size: 400px 100%;
+    animation: nexora-shimmer 1.6s ease-in-out infinite;
+  }
+  .nexora-dot {
+    animation: nexora-bounce-dot 1.4s ease-in-out infinite;
+  }
+  .nexora-dot:nth-child(2) { animation-delay: 0.18s; }
+  .nexora-dot:nth-child(3) { animation-delay: 0.36s; }
+
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-slate-300;
   }
 }
+
+/* Splash loader animation classes (outside @layer so PostCSS doesn't purge keyframes) */
+@keyframes nexora-pulse-ring {
+  0%   { transform: scale(0.85); opacity: 0.7; }
+  50%  { transform: scale(1.08); opacity: 0.2; }
+  100% { transform: scale(0.85); opacity: 0.7; }
+}
+@keyframes nexora-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+@keyframes nexora-bounce-dot {
+  0%, 80%, 100% { transform: translateY(0);    opacity: 0.4; }
+  40%           { transform: translateY(-6px);  opacity: 1;   }
+}
+.nexora-pulse-ring {
+  animation: nexora-pulse-ring 2s ease-in-out infinite;
+}
+.nexora-shimmer-bar {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%);
+  background-size: 400px 100%;
+  animation: nexora-shimmer 1.6s ease-in-out infinite;
+}
+.dark .nexora-shimmer-bar {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%);
+  background-size: 400px 100%;
+  animation: nexora-shimmer 1.6s ease-in-out infinite;
+}
+.nexora-dot {
+  animation: nexora-bounce-dot 1.4s ease-in-out infinite;
+}
+.nexora-dot:nth-child(2) { animation-delay: 0.18s; }
+.nexora-dot:nth-child(3) { animation-delay: 0.36s; }
 
 @layer utilities {
   .line-clamp-1 {
