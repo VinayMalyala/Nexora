@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Sidebar from './components/Sidebar';
 import ProductsView from './components/ProductsView';
 import PriceTracker from './components/PriceTracker';
@@ -42,7 +42,7 @@ const REQUIRED_TABLES: RequiredTable[] = ['profiles', 'pages', 'products', 'prod
 const REQUEST_TIMEOUT_MS = 10000;
 const HEALTH_CHECK_TIMEOUT_MS = 15000;
 const SESSION_ACTIVITY_STORAGE_KEY = 'nexora_last_activity_at';
-const MAX_SESSION_INACTIVITY_MS = 10 * 24 * 60 * 60 * 1000; // 10 days
+const MAX_SESSION_INACTIVITY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function getLastSessionActivity() {
   try {
@@ -126,6 +126,25 @@ type ProfileUpdateData = {
   bio: string;
   password?: string;
 };
+
+function buildFallbackUser(authUserId: string, fallbackEmail: string | undefined, metadata?: Record<string, unknown>): User {
+  const safeEmail = fallbackEmail ?? `user-${authUserId.slice(0, 8)}@nexora.app`;
+  const usernameFromMeta = typeof metadata?.username === 'string' ? metadata.username : '';
+  const nameFromMeta = typeof metadata?.name === 'string' ? metadata.name : '';
+  const derivedUsername = usernameFromMeta.trim() || safeEmail.split('@')[0] || 'user';
+  const derivedName = nameFromMeta.trim() || derivedUsername;
+  const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(derivedName)}&background=f59e0b&color=fff`;
+
+  return {
+    id: authUserId,
+    name: derivedName,
+    username: derivedUsername,
+    profilePictureUrl: avatar,
+    email: safeEmail,
+    phone: '',
+    bio: 'Profile syncing in progress.',
+  };
+}
 
 function AppContent({
   currentUser,
@@ -353,6 +372,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const authBootstrapCompleteRef = useRef(false);
   const [copiedChecklist, setCopiedChecklist] = useState(false);
   const [isDark, toggleDark] = useDarkMode();
   const [schemaHealth, setSchemaHealth] = useState<SchemaHealthState>({
@@ -497,15 +517,7 @@ export default function App() {
 
   useEffect(() => {
     let mounted = true;
-    let bootstrapFinished = false;
-
-    const startupWatchdog = window.setTimeout(() => {
-      if (!mounted || bootstrapFinished) return;
-      console.warn('Auth bootstrap timed out. Falling back to login view.');
-      saveCurrentUser(null);
-      setAuthMode('login');
-      setAuthLoading(false);
-    }, 7000);
+    authBootstrapCompleteRef.current = false;
 
     const bootstrap = async () => {
       try {
@@ -532,17 +544,26 @@ export default function App() {
           }
 
           markSessionActivity();
-          const user = await loadCurrentUser(data.session.user.id, data.session.user.email);
-          if (mounted) saveCurrentUser(user);
+          try {
+            const user = await loadCurrentUser(data.session.user.id, data.session.user.email);
+            if (mounted) saveCurrentUser(user);
+          } catch (profileError) {
+            console.warn('[Nexora] Using fallback session profile due to profile fetch error:', profileError);
+            if (mounted) {
+              saveCurrentUser(
+                buildFallbackUser(
+                  data.session.user.id,
+                  data.session.user.email,
+                  data.session.user.user_metadata as Record<string, unknown> | undefined
+                )
+              );
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to bootstrap auth session:', error);
-        if (mounted) {
-          saveCurrentUser(null);
-          setAuthMode('login');
-        }
       } finally {
-        bootstrapFinished = true;
+        authBootstrapCompleteRef.current = true;
         if (mounted) setAuthLoading(false);
       }
     };
@@ -558,15 +579,35 @@ export default function App() {
             clearSessionActivity();
             saveCurrentUser(null);
             setAuthMode('login');
+            setAuthLoading(false);
+            return;
           }
-          setAuthLoading(false);
+
+          // During reload/startup, auth can briefly emit a null session before bootstrap finishes.
+          // Avoid rendering login until bootstrap has resolved the persisted session state.
+          if (authBootstrapCompleteRef.current) {
+            setAuthLoading(false);
+          }
           return;
         }
 
         markSessionActivity();
-        const user = await loadCurrentUser(session.user.id, session.user.email);
-        if (mounted) {
-          saveCurrentUser(user);
+        try {
+          const user = await loadCurrentUser(session.user.id, session.user.email);
+          if (mounted) {
+            saveCurrentUser(user);
+          }
+        } catch (profileError) {
+          console.warn('[Nexora] Auth event profile load failed; using fallback user:', profileError);
+          if (mounted) {
+            saveCurrentUser(
+              buildFallbackUser(
+                session.user.id,
+                session.user.email,
+                session.user.user_metadata as Record<string, unknown> | undefined
+              )
+            );
+          }
         }
       } catch (error) {
         console.error('Auth state change handling failed:', error);
@@ -577,7 +618,7 @@ export default function App() {
 
     return () => {
       mounted = false;
-      window.clearTimeout(startupWatchdog);
+      authBootstrapCompleteRef.current = false;
       authSubscription.subscription.unsubscribe();
     };
   }, [loadCurrentUser, saveCurrentUser]);
@@ -655,12 +696,20 @@ export default function App() {
 
       try {
         const user = await loadCurrentUser(data.user.id, data.user.email);
+        markSessionActivity();
         saveCurrentUser(user);
         return { status: 'success' };
       } catch (profileError) {
+        markSessionActivity();
+        saveCurrentUser(
+          buildFallbackUser(
+            data.user.id,
+            data.user.email,
+            data.user.user_metadata as Record<string, unknown> | undefined
+          )
+        );
         return {
-          status: 'invalid',
-          message: profileError instanceof Error ? profileError.message : 'Unable to load your profile right now.',
+          status: 'success',
         };
       }
     },
@@ -750,12 +799,14 @@ export default function App() {
         phone: '',
         bio: 'This user has not set a bio yet.',
       });
+      markSessionActivity();
       return { status: 'success' };
     },
     [saveCurrentUser]
   );
 
   const handleLogout = useCallback(() => {
+    clearSessionActivity();
     void supabase.auth.signOut().then(({ error }) => {
       if (error) console.error('[Nexora] Sign out error:', error.message);
     });
