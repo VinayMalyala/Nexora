@@ -76,6 +76,14 @@
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-slate-300;
   }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Splash loader animation classes (outside @layer so PostCSS doesn't purge keyframes) */

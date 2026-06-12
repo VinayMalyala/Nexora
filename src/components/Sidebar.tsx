@@ -117,7 +117,7 @@ function Sidebar({
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+      <nav className="flex-1 overflow-hidden px-3 py-4 space-y-1">
         {navItem(
           <Home size={16} />,
           'Home',
@@ -153,37 +153,44 @@ function Sidebar({
 
           {pagesExpanded && (
             <div className="mt-1 space-y-0.5">
-              {pages.map(page => (
-                <div
-                  key={page.id}
-                  className="relative group"
-                  onMouseEnter={() => setHoveredPage(page.id)}
-                  onMouseLeave={() => setHoveredPage(null)}
-                >
-                  <button
-                    onClick={() => { onNavigate('page', page.id); setMobileOpen(false); }}
-                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
-                      activeView === 'page' && activePageId === page.id
-                        ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100'
-                    }`}
+              <div className="max-h-[36vh] sm:max-h-[44vh] overflow-y-auto no-scrollbar space-y-0.5">
+                {pages.map(page => (
+                  <div
+                    key={page.id}
+                    className="relative group"
+                    onMouseEnter={() => setHoveredPage(page.id)}
+                    onMouseLeave={() => setHoveredPage(null)}
                   >
-                    <span className="text-base leading-none">{page.icon}</span>
-                    <span className="flex-1 text-left truncate">{page.name}</span>
-                  </button>
-                  {hoveredPage === page.id && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeletePage(page.id);
-                      }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors"
+                      onClick={() => { onNavigate('page', page.id); setMobileOpen(false); }}
+                      className={`w-full flex items-center gap-3 pl-2 pr-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 border-l-2 ${
+                        activeView === 'page' && activePageId === page.id
+                          ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                          : 'border-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100'
+                      }`}
+                      style={
+                        activeView === 'page' && activePageId === page.id
+                          ? { borderLeftColor: page.color }
+                          : undefined
+                      }
                     >
-                      <Trash2 size={12} />
+                      <span className="text-base leading-none">{page.icon}</span>
+                      <span className="flex-1 text-left truncate">{page.name}</span>
                     </button>
-                  )}
-                </div>
-              ))}
+                    {hoveredPage === page.id && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeletePage(page.id);
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
 
               <button
                 onClick={onAddPage}
@@ -196,24 +203,6 @@ function Sidebar({
           )}
         </div>
 
-        <div className="pt-2 sm:pt-3 pb-1">
-          <div className="h-px bg-slate-100" />
-        </div>
-
-        {/* Quick Info */}
-        <div className="px-3 pt-1 hidden sm:block">
-          <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Quick Info</p>
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-              <Tag size={11} />
-              <span>Filter by tag on home</span>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-              <FileText size={11} />
-              <span>Pages group products</span>
-            </div>
-          </div>
-        </div>
       </nav>
 
       {/* Footer */}
