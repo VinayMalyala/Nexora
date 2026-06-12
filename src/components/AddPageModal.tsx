@@ -68,13 +68,13 @@ export default function AddPageModal({ onClose, onSave }: AddPageModalProps) {
           {/* Presets */}
           <div>
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2.5">Quick Presets</p>
-            <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {PAGE_PRESETS.map(p => (
                 <button
                   key={p.name}
                   type="button"
                   onClick={() => handlePreset(p)}
-                  className={`flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-medium transition-all ${
+                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border text-xs font-medium transition-all ${
                     name === p.name ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 text-slate-600 dark:text-slate-300'
                   }`}
                 >

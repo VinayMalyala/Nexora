@@ -468,6 +468,7 @@ export default function App() {
           if (canceled) return;
           const elapsed = ts - startTs;
           const t = Math.min(elapsed / durationMs, 1);
+          // Linear interpolation keeps motion steady and "drag-like".
           const next = Math.round(startValue + delta * t);
           updateProgress(next);
           if (t < 1) {
@@ -482,10 +483,14 @@ export default function App() {
     };
 
     if (authLoading) {
+      // Smooth staged timeline:
+      // 0->15 over 1s, 15->50 over 2s, 50->70 over 3s, 70->90 over 2s,
+      // then hold at 90% until auth completes.
       updateProgress(0);
-      animateTo(15, 450, 0);
-      animateTo(70, 800, 2500);
-      animateTo(90, 700, 4300);
+      animateTo(15, 1000, 0);
+      animateTo(50, 2000, 1000);
+      animateTo(70, 3000, 3000);
+      animateTo(90, 2000, 6000);
     } else {
       const start = progressValue;
       const delta = 100 - start;
@@ -588,7 +593,32 @@ export default function App() {
 
   useEffect(() => {
     let mounted = true;
+    let guestFallbackTimer: number | null = null;
     authBootstrapCompleteRef.current = false;
+
+    const clearGuestFallback = () => {
+      if (guestFallbackTimer !== null) {
+        window.clearTimeout(guestFallbackTimer);
+        guestFallbackTimer = null;
+      }
+    };
+
+    const scheduleGuestFallback = (delayMs = 650) => {
+      clearGuestFallback();
+      guestFallbackTimer = window.setTimeout(() => {
+        if (!mounted) return;
+        saveCurrentUser(null);
+        setAuthMode('login');
+        setAuthLoading(false);
+      }, delayMs);
+    };
+
+    const resolveAuthenticated = (user: User) => {
+      if (!mounted) return;
+      clearGuestFallback();
+      saveCurrentUser(user);
+      setAuthLoading(false);
+    };
 
     const bootstrap = async () => {
       try {
@@ -598,7 +628,7 @@ export default function App() {
           'Session check timed out. Please reload and try again.'
         );
         if (error || !mounted) {
-          setAuthLoading(false);
+          scheduleGuestFallback();
           return;
         }
 
@@ -610,6 +640,7 @@ export default function App() {
             if (mounted) {
               saveCurrentUser(null);
               setAuthMode('login');
+              setAuthLoading(false);
             }
             return;
           }
@@ -617,11 +648,11 @@ export default function App() {
           markSessionActivity();
           try {
             const user = await loadCurrentUser(data.session.user.id, data.session.user.email);
-            if (mounted) saveCurrentUser(user);
+            resolveAuthenticated(user);
           } catch (profileError) {
             console.warn('[Nexora] Using fallback session profile due to profile fetch error:', profileError);
             if (mounted) {
-              saveCurrentUser(
+              resolveAuthenticated(
                 buildFallbackUser(
                   data.session.user.id,
                   data.session.user.email,
@@ -630,12 +661,15 @@ export default function App() {
               );
             }
           }
+        } else {
+          // Session restoration can briefly lag on reload. Delay guest routing slightly.
+          scheduleGuestFallback();
         }
       } catch (error) {
         console.error('Failed to bootstrap auth session:', error);
+        scheduleGuestFallback();
       } finally {
         authBootstrapCompleteRef.current = true;
-        if (mounted) setAuthLoading(false);
       }
     };
 
@@ -647,6 +681,7 @@ export default function App() {
         if (!session?.user) {
           // Some non-signed-out events can briefly report null; avoid forcing logout unless explicit.
           if (event === 'SIGNED_OUT') {
+            clearGuestFallback();
             clearSessionActivity();
             saveCurrentUser(null);
             setAuthMode('login');
@@ -654,21 +689,25 @@ export default function App() {
             return;
           }
 
-          // Ignore transient null-session auth events (e.g. INITIAL_SESSION race during reload).
-          // Bootstrap effect is the single authority that decides first-screen auth routing.
+          // Ignore transient null-session auth events during early bootstrap.
+          // After bootstrap, use delayed guest fallback to avoid login flash races.
+          if (authBootstrapCompleteRef.current) {
+            scheduleGuestFallback(450);
+          }
           return;
         }
 
+        clearGuestFallback();
         markSessionActivity();
         try {
           const user = await loadCurrentUser(session.user.id, session.user.email);
           if (mounted) {
-            saveCurrentUser(user);
+            resolveAuthenticated(user);
           }
         } catch (profileError) {
           console.warn('[Nexora] Auth event profile load failed; using fallback user:', profileError);
           if (mounted) {
-            saveCurrentUser(
+            resolveAuthenticated(
               buildFallbackUser(
                 session.user.id,
                 session.user.email,
@@ -684,6 +723,7 @@ export default function App() {
 
     return () => {
       mounted = false;
+      clearGuestFallback();
       authBootstrapCompleteRef.current = false;
       authSubscription.subscription.unsubscribe();
     };

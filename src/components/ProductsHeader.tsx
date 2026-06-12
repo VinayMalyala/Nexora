@@ -127,8 +127,8 @@ function ProductsHeader({
         </div>
 
         {/* Search and Filter Row */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="relative w-full sm:flex-1 min-w-0">
             <Search size={13} className="sm:w-3.5 sm:h-3.5 absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               placeholder="Search..."
@@ -137,13 +137,14 @@ function ProductsHeader({
             />
           </div>
 
+          <div className="flex items-center justify-end gap-2">
           <div ref={sortMenuRef} className="relative">
             <button
               type="button"
               onClick={() => setShowSortMenu(current => !current)}
               aria-label="Sort products"
               aria-expanded={showSortMenu}
-              className="w-[124px] sm:w-[136px] flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-slate-100 px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
+              className="w-[118px] sm:w-[136px] h-9 sm:h-10 flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-slate-100 px-2.5 sm:px-3 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
             >
               <span className="truncate">{activeSortLabel}</span>
               <ChevronDown size={14} className={`text-slate-400 transition-transform ${showSortMenu ? 'rotate-180' : ''}`} />
@@ -179,20 +180,21 @@ function ProductsHeader({
           <div className="relative">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 text-xs sm:text-sm font-medium rounded-xl border transition-colors flex-shrink-0 ${
+              className={`h-9 sm:h-10 flex items-center gap-1.5 px-2.5 sm:px-3.5 text-xs sm:text-sm font-medium rounded-xl border transition-colors flex-shrink-0 ${
                 showFilters || activeFiltersCount > 0
                   ? 'bg-amber-50 border-amber-200 text-amber-700'
                   : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
               <SlidersHorizontal size={13} className="sm:w-3.5 sm:h-3.5" />
-              <span className="hidden sm:inline">Filter</span>
+              <span>Filter</span>
               {activeFiltersCount > 0 && (
                 <span className="w-4 h-4 bg-amber-400 text-white text-xs rounded-full flex items-center justify-center ml-0.5">
                   {activeFiltersCount}
                 </span>
               )}
             </button>
+          </div>
           </div>
         </div>
 

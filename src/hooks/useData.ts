@@ -409,25 +409,23 @@ export function useProducts(userId?: string | null) {
 
     setProducts(optimistic);
 
-    const updates = optimistic.map(product => ({ id: product.id, sort_order: product.sort_order }));
+    const updates = optimistic.map(product => ({
+      id: product.id,
+      sort_order: product.sort_order,
+      updated_at: new Date().toISOString(),
+    }));
 
     try {
-      const responses = await Promise.all(
-        updates.map(update => {
-          const query = supabase
-            .from('products')
-            .update({ sort_order: update.sort_order, updated_at: new Date().toISOString() })
-            .eq('id', update.id);
+      const query = supabase
+        .from('products')
+        .upsert(updates, { onConflict: 'id' });
 
-          return userId ? query.eq('user_id', userId) : query;
-        })
-      );
+      const { error: upsertError } = userId ? await query.eq('user_id', userId) : await query;
 
-      const failed = responses.find(response => response.error);
-      if (failed?.error) {
+      if (upsertError) {
         setProducts(previousProducts);
-        setError(failed.error.message);
-        return { error: failed.error };
+        setError(upsertError.message);
+        return { error: upsertError };
       }
 
       return { error: null };

@@ -177,17 +177,18 @@ function Sidebar({
                       <span className="text-base leading-none">{page.icon}</span>
                       <span className="flex-1 text-left truncate">{page.name}</span>
                     </button>
-                    {hoveredPage === page.id && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeletePage(page.id);
-                        }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeletePage(page.id);
+                      }}
+                      className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-slate-300 hover:text-red-400 hover:bg-red-50 transition-all ${
+                        hoveredPage === page.id ? 'opacity-100' : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100'
+                      }`}
+                      aria-label={`Delete page ${page.name}`}
+                    >
+                      <Trash2 size={12} />
+                    </button>
                   </div>
                 ))}
               </div>

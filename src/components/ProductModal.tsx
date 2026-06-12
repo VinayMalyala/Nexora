@@ -21,6 +21,7 @@ function StyledDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const listboxId = useMemo(() => `dropdown-${Math.random().toString(36).slice(2)}`, []);
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
@@ -29,8 +30,18 @@ function StyledDropdown({
       }
     };
 
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+      }
+    };
+
     document.addEventListener('mousedown', onPointerDown);
-    return () => document.removeEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
   }, []);
 
   const activeLabel = options.find(option => option.value === value)?.label ?? options[0]?.label ?? '';
@@ -40,6 +51,9 @@ function StyledDropdown({
       <button
         type="button"
         onClick={() => setOpen(current => !current)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={listboxId}
         className={`w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 ${
           compact ? 'pl-3 pr-8 py-2.5 text-sm text-left' : 'pl-3 pr-10 py-2.5 text-sm text-left'
         }`}
@@ -52,11 +66,17 @@ function StyledDropdown({
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-lg">
+        <div
+          id={listboxId}
+          role="listbox"
+          className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-lg"
+        >
           {options.map(option => (
             <button
               key={option.value}
               type="button"
+              role="option"
+              aria-selected={option.value === value}
               onClick={() => {
                 onChange(option.value);
                 setOpen(false);

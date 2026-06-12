@@ -141,6 +141,8 @@ function ProductCard({
           <img
             src={product.image_url}
             alt={product.name}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-contain p-3 transition-transform duration-300 group-hover:scale-105"
             onError={() => setImageError(true)}
           />

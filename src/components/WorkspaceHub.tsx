@@ -62,10 +62,10 @@ const CARDS: WorkspaceCard[] = [
 
 export default memo(function WorkspaceHub({ onNavigate }: WorkspaceHubProps) {
   return (
-    <div className="p-6 h-full overflow-auto bg-slate-50 dark:bg-slate-950">
+    <div className="p-4 sm:p-6 h-full overflow-auto bg-slate-50 dark:bg-slate-950">
       <div className="max-w-3xl mx-auto">
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Workspace</h2>
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-semibold text-slate-800 dark:text-slate-100">Workspace</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Organize products, expenses, wardrobe, and goals in one place.</p>
         </div>
 
@@ -80,7 +80,7 @@ export default memo(function WorkspaceHub({ onNavigate }: WorkspaceHubProps) {
                     onNavigate(card.viewMode);
                   }
                 }}
-                className={`relative rounded-2xl border p-6 transition-all duration-200 ${card.cardClass} ${card.active ? 'cursor-pointer' : ''}`}
+                className={`relative rounded-2xl border p-5 sm:p-6 transition-all duration-200 ${card.cardClass} ${card.active ? 'cursor-pointer' : ''}`}
               >
                 {!card.active && (
                   <span className="absolute top-4 right-4 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-full">
