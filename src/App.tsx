@@ -41,6 +41,40 @@ const REQUIRED_TABLES: RequiredTable[] = ['profiles', 'pages', 'products', 'prod
 
 const REQUEST_TIMEOUT_MS = 10000;
 const HEALTH_CHECK_TIMEOUT_MS = 15000;
+const SESSION_ACTIVITY_STORAGE_KEY = 'nexora_last_activity_at';
+const MAX_SESSION_INACTIVITY_MS = 10 * 24 * 60 * 60 * 1000; // 10 days
+
+function getLastSessionActivity() {
+  try {
+    const raw = window.localStorage.getItem(SESSION_ACTIVITY_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function markSessionActivity() {
+  try {
+    window.localStorage.setItem(SESSION_ACTIVITY_STORAGE_KEY, String(Date.now()));
+  } catch {
+    // Ignore storage failures; auth still works with Supabase session persistence.
+  }
+}
+
+function clearSessionActivity() {
+  try {
+    window.localStorage.removeItem(SESSION_ACTIVITY_STORAGE_KEY);
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+}
+
+function isSessionInactiveTooLong(lastActivityAt: number | null) {
+  if (!lastActivityAt) return false;
+  return Date.now() - lastActivityAt > MAX_SESSION_INACTIVITY_MS;
+}
 
 function withTimeout<T>(promiseLike: PromiseLike<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -257,7 +291,7 @@ function AppContent({
             onAdd={handleSave}
             onDelete={deleteProduct}
             onToggleFavorite={handleToggleFavorite}
-            onReorder={activeView === 'home' ? handleReorderProducts : undefined}
+            onReorder={handleReorderProducts}
           />
         )}
       </main>
@@ -486,6 +520,18 @@ export default function App() {
         }
 
         if (data.session?.user) {
+          const lastActivityAt = getLastSessionActivity();
+          if (isSessionInactiveTooLong(lastActivityAt)) {
+            await supabase.auth.signOut();
+            clearSessionActivity();
+            if (mounted) {
+              saveCurrentUser(null);
+              setAuthMode('login');
+            }
+            return;
+          }
+
+          markSessionActivity();
           const user = await loadCurrentUser(data.session.user.id, data.session.user.email);
           if (mounted) saveCurrentUser(user);
         }
@@ -509,6 +555,7 @@ export default function App() {
         if (!session?.user) {
           // Some non-signed-out events can briefly report null; avoid forcing logout unless explicit.
           if (event === 'SIGNED_OUT') {
+            clearSessionActivity();
             saveCurrentUser(null);
             setAuthMode('login');
           }
@@ -516,6 +563,7 @@ export default function App() {
           return;
         }
 
+        markSessionActivity();
         const user = await loadCurrentUser(session.user.id, session.user.email);
         if (mounted) {
           saveCurrentUser(user);
@@ -533,6 +581,33 @@ export default function App() {
       authSubscription.subscription.unsubscribe();
     };
   }, [loadCurrentUser, saveCurrentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const ACTIVITY_WRITE_THROTTLE_MS = 60 * 1000;
+    let lastWriteAt = 0;
+
+    const onActivity = () => {
+      const now = Date.now();
+      if (now - lastWriteAt < ACTIVITY_WRITE_THROTTLE_MS) return;
+      lastWriteAt = now;
+      markSessionActivity();
+    };
+
+    onActivity();
+
+    const events: Array<keyof WindowEventMap> = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart', 'focus'];
+    events.forEach(eventName => {
+      window.addEventListener(eventName, onActivity, { passive: true });
+    });
+
+    return () => {
+      events.forEach(eventName => {
+        window.removeEventListener(eventName, onActivity);
+      });
+    };
+  }, [currentUser]);
 
   const toSyntheticEmail = (username: string) => `${username}@nexora.app`;
 

@@ -108,7 +108,7 @@ function ProductCard({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onDragEnd={handleDragEnd}
-      className={`group bg-white dark:bg-slate-800 rounded-2xl border shadow-sm transition-all duration-200 overflow-hidden flex flex-col hover:shadow-lg ${
+      className={`group relative bg-white dark:bg-slate-800 rounded-2xl border shadow-sm transition-all duration-200 overflow-hidden flex flex-col hover:shadow-lg ${
         draggable ? 'cursor-default' : ''
       } ${
         isDragging ? 'opacity-60 scale-[0.99]' : ''
@@ -118,6 +118,15 @@ function ProductCard({
           : 'border-slate-100 dark:border-slate-700'
       }`}
     >
+      {page && !hidePageBadge && (
+        <div
+          className="absolute top-2 sm:top-3 right-2 sm:right-3 z-10 text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full bg-white/95 dark:bg-slate-800/95 backdrop-blur-sm border"
+          style={{ borderColor: `${page.color}40`, color: page.color }}
+        >
+          {page.icon} {page.name}
+        </div>
+      )}
+
       <div className="relative bg-white h-[120px] sm:h-[150px] overflow-hidden">
         {!imageError && product.image_url ? (
           <img
@@ -136,15 +145,6 @@ function ProductCard({
           <div className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-red-500 text-white text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded-full flex items-center gap-1">
             <TrendingDown size={9} />
             -{discount}%
-          </div>
-        )}
-
-        {page && !hidePageBadge && (
-          <div
-            className="absolute top-2 sm:top-3 right-2 sm:right-3 text-xs font-medium px-1.5 sm:px-2 py-0.5 rounded-full bg-white/90 backdrop-blur-sm border hidden sm:block"
-            style={{ borderColor: `${page.color}40`, color: page.color }}
-          >
-            {page.icon} {page.name}
           </div>
         )}
 
@@ -182,7 +182,10 @@ function ProductCard({
       <div className="flex flex-col flex-1 p-3 sm:p-4 gap-2 sm:gap-3">
         {product.company && (
           <div className="flex items-center justify-between gap-2">
-            <div className="text-xs text-slate-500 dark:text-slate-400 truncate" title={product.company}>
+            <div
+              className="inline-flex max-w-[75%] items-center rounded-full border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/20 px-2 py-0.5 text-[11px] font-semibold text-sky-700 dark:text-sky-300 truncate"
+              title={product.company}
+            >
               {product.company}
             </div>
             <button
