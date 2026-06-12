@@ -235,6 +235,7 @@ export default memo(function ProductModal({
       { value: 'kg', label: 'kg' },
       { value: 'ml', label: 'ml' },
       { value: 'l', label: 'l' },
+      { value: 'item', label: 'item(s)' },
     ],
     []
   );
@@ -331,7 +332,7 @@ export default memo(function ProductModal({
                   compact
                   value={form.quantity_unit}
                   options={quantityUnitOptions}
-                  onChange={value => setForm(current => ({ ...current, quantity_unit: value as 'g' | 'kg' | 'ml' | 'l' }))}
+                  onChange={value => setForm(current => ({ ...current, quantity_unit: value as 'g' | 'kg' | 'ml' | 'l' | 'item' }))}
                 />
               </div>
               {errors.quantity_value && <p className="text-xs text-red-400 mt-1">{errors.quantity_value}</p>}

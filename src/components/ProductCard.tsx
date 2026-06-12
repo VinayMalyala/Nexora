@@ -64,6 +64,15 @@ function ProductCard({
     [pages, product.page_id]
   );
 
+  const quantityLabel = useMemo(() => {
+    if (!product.quantity_value || !product.quantity_unit) return null;
+    if (product.quantity_unit !== 'item') {
+      return `${product.quantity_value} ${product.quantity_unit}`;
+    }
+    const noun = product.quantity_value === 1 ? 'item' : 'items';
+    return `${product.quantity_value} ${noun}`;
+  }, [product.quantity_unit, product.quantity_value]);
+
   const handleDelete = useCallback(() => onDelete(product.id), [onDelete, product.id]);
   const handleEdit = useCallback(() => onEdit(product), [onEdit, product]);
   const handleToggleFavorite = useCallback((e: React.MouseEvent) => {
@@ -227,9 +236,9 @@ function ProductCard({
         <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug line-clamp-2 flex-1">
           {product.name}
         </h3>
-        {product.quantity_value && product.quantity_unit && (
+        {quantityLabel && (
           <div className="text-xs text-slate-500 dark:text-slate-400">
-            Qty: {product.quantity_value} {product.quantity_unit}
+            Qty: {quantityLabel}
           </div>
         )}
         <div className="flex items-center justify-between gap-2">

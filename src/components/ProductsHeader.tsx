@@ -1,7 +1,9 @@
-import { memo, useEffect, useMemo, useState } from 'react';
-import { Search, Plus, SlidersHorizontal, X, Tag } from 'lucide-react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { Search, Plus, SlidersHorizontal, X, Tag, ChevronDown, Check } from 'lucide-react';
 import type { Page } from '../types';
 import { CATEGORIES } from '../types';
+
+type SortMode = 'default' | 'name-asc' | 'price-low-high' | 'price-high-low';
 
 interface ProductsHeaderProps {
   title: string;
@@ -9,6 +11,8 @@ interface ProductsHeaderProps {
   pages: Page[];
   onAddProduct: () => void;
   onSearch: (q: string) => void;
+  sortMode: SortMode;
+  onSortChange: (mode: SortMode) => void;
   onApplyFilters: (filters: {
     category: string;
     pageId: string;
@@ -30,6 +34,8 @@ function ProductsHeader({
   pages,
   onAddProduct,
   onSearch,
+  sortMode,
+  onSortChange,
   onApplyFilters,
   activeCategory,
   activePage,
@@ -40,12 +46,26 @@ function ProductsHeader({
   showPageFilter = false,
 }: ProductsHeaderProps) {
   const [showFilters, setShowFilters] = useState(false);
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const [pendingCategory, setPendingCategory] = useState(activeCategory);
   const [pendingPage, setPendingPage] = useState(activePage);
   const [pendingTag, setPendingTag] = useState(activeTag);
   const [pendingCompany, setPendingCompany] = useState(activeCompany);
   const [companyQuery, setCompanyQuery] = useState('');
   const [tagQuery, setTagQuery] = useState('');
+  const sortMenuRef = useRef<HTMLDivElement>(null);
+
+  const sortOptions: Array<{ value: SortMode; label: string }> = [
+    { value: 'default', label: 'Sort' },
+    { value: 'name-asc', label: 'A-Z' },
+    { value: 'price-low-high', label: 'Low to High' },
+    { value: 'price-high-low', label: 'High-Low' },
+  ];
+
+  const activeSortLabel = useMemo(() => {
+    if (sortMode === 'default') return 'Sort';
+    return sortOptions.find(option => option.value === sortMode)?.label ?? 'Sort';
+  }, [sortMode, sortOptions]);
 
   useEffect(() => {
     if (!showFilters) {
@@ -59,6 +79,17 @@ function ProductsHeader({
     setCompanyQuery('');
     setTagQuery('');
   }, [showFilters, activeCategory, activePage, activeTag, activeCompany]);
+
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (!sortMenuRef.current?.contains(event.target as Node)) {
+        setShowSortMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, []);
 
   const filteredTags = useMemo(() => {
     const q = tagQuery.trim().toLowerCase();
@@ -105,6 +136,46 @@ function ProductsHeader({
               className="pl-8 sm:pl-9 pr-3 sm:pr-4 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-600 dark:text-slate-100 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
             />
           </div>
+
+          <div ref={sortMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setShowSortMenu(current => !current)}
+              aria-label="Sort products"
+              aria-expanded={showSortMenu}
+              className="w-[124px] sm:w-[136px] flex items-center justify-between rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 dark:text-slate-100 px-2.5 sm:px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
+            >
+              <span className="truncate">{activeSortLabel}</span>
+              <ChevronDown size={14} className={`text-slate-400 transition-transform ${showSortMenu ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showSortMenu && (
+              <div className="absolute right-0 mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-xl z-30">
+                {sortOptions.map(option => {
+                  const active = option.value === sortMode;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        onSortChange(option.value);
+                        setShowSortMenu(false);
+                      }}
+                      className={`w-full px-3 py-2.5 text-sm flex items-center justify-between transition-colors ${
+                        active
+                          ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      <span>{option.label}</span>
+                      {active ? <Check size={14} /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           <div className="relative">
             <button
               onClick={() => setShowFilters(!showFilters)}

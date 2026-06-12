@@ -22,7 +22,7 @@ const ProductAvatar = memo(function ProductAvatar({ product }: { product: Produc
 });
 
 type UnitOption = {
-  value: 'g' | 'kg' | 'ml' | 'l';
+  value: 'g' | 'kg' | 'ml' | 'l' | 'item';
   label: string;
 };
 
@@ -93,7 +93,7 @@ function StyledUnitDropdown({
 export default function PriceTracker({ products, loading }: PriceTrackerProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [amount, setAmount] = useState<number | ''>('');
-  const [unit, setUnit] = useState<'g' | 'kg' | 'ml' | 'l'>('g');
+  const [unit, setUnit] = useState<'g' | 'kg' | 'ml' | 'l' | 'item'>('g');
   const [manualPrice, setManualPrice] = useState<number | ''>('');
   const [copied, setCopied] = useState(false);
   const [productSearchQuery, setProductSearchQuery] = useState('');
@@ -124,7 +124,10 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
 
   const pricePerUnit = useMemo(() => {
     if (!priceToUse || !normalizedAmount) return null;
-    return unit === 'l' ? priceToUse / (amount as number) : priceToUse / normalizedAmount;
+    if (unit === 'l' || unit === 'item') {
+      return priceToUse / (amount as number);
+    }
+    return priceToUse / normalizedAmount;
   }, [priceToUse, normalizedAmount, amount, unit]);
 
   const handleCopyRate = () => {
@@ -138,22 +141,24 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
 
   const inputDescription = unit === 'g' || unit === 'kg'
     ? 'grams or kilograms'
-    : 'milliliters or liters';
+    : unit === 'ml' || unit === 'l'
+    ? 'milliliters or liters'
+    : 'number of items';
 
-  const displayAmount = unit === 'l' ? amount : normalizedAmount;
-  const displayUnit = unit === 'l' ? 'l' : unit === 'ml' ? 'ml' : 'g';
+  const displayAmount = unit === 'l' || unit === 'item' ? amount : normalizedAmount;
+  const displayUnit = unit === 'l' ? 'l' : unit === 'ml' ? 'ml' : unit === 'item' ? 'item' : 'g';
 
   const comparisonRows = useMemo(() => {
     if (!amount || amount <= 0) return [];
 
-    const denominator = unit === 'l' ? amount : normalizedAmount;
+    const denominator = unit === 'l' || unit === 'item' ? amount : normalizedAmount;
     if (!denominator || denominator <= 0) return [];
 
     return products
       .map(product => ({
         id: product.id,
         name: product.name,
-        rate: unit === 'l' ? product.price / (amount as number) : product.price / denominator,
+        rate: unit === 'l' || unit === 'item' ? product.price / (amount as number) : product.price / denominator,
       }))
       .sort((a, b) => a.rate - b.rate)
       .slice(0, 5);
@@ -207,6 +212,7 @@ export default function PriceTracker({ products, loading }: PriceTrackerProps) {
       { value: 'kg', label: 'kg' },
       { value: 'ml', label: 'ml' },
       { value: 'l', label: 'l' },
+      { value: 'item', label: 'item(s)' },
     ],
     []
   );

@@ -12,7 +12,7 @@ export interface Product {
   price: number;
   original_price: number | null;
   quantity_value: number | null;
-  quantity_unit: 'g' | 'kg' | 'ml' | 'l' | null;
+  quantity_unit: 'g' | 'kg' | 'ml' | 'l' | 'item' | null;
   image_url: string;
   category: string;
   page_id: string | null;

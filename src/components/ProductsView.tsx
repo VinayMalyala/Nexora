@@ -5,6 +5,8 @@ import EmptyState from './EmptyState';
 import ProductModal from './ProductModal';
 import type { Product, Page } from '../types';
 
+type SortMode = 'default' | 'name-asc' | 'price-low-high' | 'price-high-low';
+
 interface ProductsViewProps {
   title: string;
   subtitle: string;
@@ -39,11 +41,12 @@ function ProductsView({
   const [filterPage, setFilterPage] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [filterCompany, setFilterCompany] = useState('');
+  const [sortMode, setSortMode] = useState<SortMode>('default');
   const [draggingProductId, setDraggingProductId] = useState<string | null>(null);
   const [dropTargetProductId, setDropTargetProductId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
-    return products.filter(p => {
+    const filteredProducts = products.filter(p => {
       const matchSearch =
         !search ||
         p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -55,7 +58,21 @@ function ProductsView({
       const matchCompany = !filterCompany || p.company?.toLowerCase() === filterCompany.toLowerCase();
       return matchSearch && matchCategory && matchPage && matchTag && matchCompany;
     });
-  }, [products, search, filterCategory, filterPage, filterTag, filterCompany]);
+
+    if (sortMode === 'name-asc') {
+      return [...filteredProducts].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    }
+
+    if (sortMode === 'price-low-high') {
+      return [...filteredProducts].sort((a, b) => a.price - b.price);
+    }
+
+    if (sortMode === 'price-high-low') {
+      return [...filteredProducts].sort((a, b) => b.price - a.price);
+    }
+
+    return filteredProducts;
+  }, [products, search, filterCategory, filterPage, filterTag, filterCompany, sortMode]);
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
@@ -82,7 +99,8 @@ function ProductsView({
     !filterCategory &&
     !filterPage &&
     !filterTag &&
-    !filterCompany
+    !filterCompany &&
+    sortMode === 'default'
   );
 
   const handleApplyFilters = useCallback(
@@ -209,6 +227,8 @@ function ProductsView({
         pages={pages}
         onAddProduct={handleAddProduct}
         onSearch={setSearch}
+        sortMode={sortMode}
+        onSortChange={setSortMode}
         onApplyFilters={handleApplyFilters}
         activeCategory={filterCategory}
         activePage={filterPage}
