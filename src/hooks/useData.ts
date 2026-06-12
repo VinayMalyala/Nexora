@@ -324,15 +324,22 @@ export function useProducts(userId?: string | null) {
 
   const deleteProduct = useCallback(async (id: string) => {
     setError(null);
+
+    const previousProducts = products;
+    setProducts(prev => prev.filter(product => product.id !== id));
+
     const query = supabase.from('products').delete().eq('id', id);
     const { error } = userId ? await query.eq('user_id', userId) : await query;
+
     if (error) {
+      // Roll back optimistic deletion on failure.
+      setProducts(previousProducts);
       setError(error.message);
       return { error };
     }
-    setProducts(prev => prev.filter(product => product.id !== id));
+
     return { error: null };
-  }, [userId]);
+  }, [products, userId]);
 
   const toggleFavorite = useCallback(async (id: string, isFavorite: boolean) => {
     setError(null);

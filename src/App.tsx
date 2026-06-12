@@ -654,11 +654,8 @@ export default function App() {
             return;
           }
 
-          // During reload/startup, auth can briefly emit a null session before bootstrap finishes.
-          // Avoid rendering login until bootstrap has resolved the persisted session state.
-          if (authBootstrapCompleteRef.current) {
-            setAuthLoading(false);
-          }
+          // Ignore transient null-session auth events (e.g. INITIAL_SESSION race during reload).
+          // Bootstrap effect is the single authority that decides first-screen auth routing.
           return;
         }
 
