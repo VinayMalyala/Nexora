@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Target, Shirt, ArrowLeftRight, BarChart3, ChevronRight } from 'lucide-react';
+import { Target, Shirt, Apple, BarChart3, ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ViewMode } from '../types';
 
@@ -40,13 +40,14 @@ const CARDS: WorkspaceCard[] = [
     cardClass: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700',
   },
   {
-    title: 'Compare',
-    description: 'Compare products side by side for smarter decisions.',
-    icon: ArrowLeftRight,
+    title: 'Diet',
+    description: 'Track daily meals, build healthy habits, and log how you feel.',
+    icon: Apple,
     gradient: 'from-emerald-400 to-teal-500',
-    active: false,
-    textColor: '',
-    cardClass: 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-60',
+    active: true,
+    viewMode: 'diet',
+    textColor: 'text-emerald-600 dark:text-emerald-400',
+    cardClass: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700',
   },
   {
     title: 'Insights',

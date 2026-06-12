@@ -1,10 +1,11 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Target, CheckCircle2, Circle, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Target, CheckCircle2, Circle, Trash2, ChevronDown, ChevronUp, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Todo } from '../types';
 
 interface GoalsPageProps {
   userId: string;
+  onBack: () => void;
 }
 
 type FilterKey = 'all' | 'day' | 'week' | 'month';
@@ -88,7 +89,7 @@ const TodoItem = memo(function TodoItem({
   );
 });
 
-export default function GoalsPage({ userId }: GoalsPageProps) {
+export default function GoalsPage({ userId, onBack }: GoalsPageProps) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -228,8 +229,16 @@ export default function GoalsPage({ userId }: GoalsPageProps) {
       <div className="max-w-2xl mx-auto">
 
         {/* Header */}
-        <div className="flex items-start justify-between mb-6">
+        <div className="flex items-start justify-between mb-6 gap-4">
           <div>
+            <button
+              type="button"
+              onClick={onBack}
+              className="mb-3 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+            >
+              <ArrowLeft size={13} />
+              Back to Workspace
+            </button>
             <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Goals</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               {loading

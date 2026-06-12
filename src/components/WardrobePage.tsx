@@ -1,10 +1,11 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, RefreshCcw, Shirt, Trash2, Plus, AlertTriangle } from 'lucide-react';
+import { CalendarDays, RefreshCcw, Shirt, Trash2, Plus, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { WardrobeCombination, WardrobeWear } from '../types';
 
 interface WardrobePageProps {
   userId: string;
+  onBack: () => void;
 }
 
 type PlannedWear = {
@@ -94,7 +95,7 @@ function makeCombinationLabel(combination: WardrobeCombination) {
   return `${combination.shirt} + ${combination.pants}`;
 }
 
-export default memo(function WardrobePage({ userId }: WardrobePageProps) {
+export default memo(function WardrobePage({ userId, onBack }: WardrobePageProps) {
   const [combinations, setCombinations] = useState<WardrobeCombination[]>([]);
   const [wears, setWears] = useState<WardrobeWear[]>([]);
   const [month, setMonth] = useState(getMonthValue(new Date()));
@@ -400,6 +401,14 @@ export default memo(function WardrobePage({ userId }: WardrobePageProps) {
       <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div>
+            <button
+              type="button"
+              onClick={onBack}
+              className="mb-3 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+            >
+              <ArrowLeft size={13} />
+              Back to Workspace
+            </button>
             <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-100">Wardrobe</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               Dress with intention. Rotate with confidence.

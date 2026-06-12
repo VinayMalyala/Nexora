@@ -77,6 +77,43 @@ export interface WardrobeWear {
   created_at: string;
 }
 
+export interface DietMeal {
+  id: string;
+  user_id: string;
+  day_of_week: number; // 0 = Sunday … 6 = Saturday
+  meal_type: string;
+  hostel_meal: string;
+  custom_meal: string;
+  use_custom: boolean;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DietLog {
+  id: string;
+  user_id: string;
+  log_date: string;
+  meal_type: string;
+  what_ate: string;
+  followed_plan: boolean;
+  mood: string | null;
+  notes: string;
+  created_at: string;
+}
+
+export interface DietRecipe {
+  id: string;
+  user_id: string;
+  title: string;
+  ingredients: string;
+  steps: string;
+  tags: string;
+  prep_time_minutes: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Expense {
   id: string;
   user_id: string;
@@ -88,7 +125,7 @@ export interface Expense {
   created_at?: string;
 }
 
-export type ViewMode = 'home' | 'recents' | 'favorites' | 'workspace' | 'goals' | 'wardrobe' | 'page' | 'price-tracker' | 'monthly-expenses' | 'profile';
+export type ViewMode = 'home' | 'recents' | 'favorites' | 'workspace' | 'goals' | 'wardrobe' | 'diet' | 'page' | 'price-tracker' | 'monthly-expenses' | 'profile';
 
 export const CATEGORIES = [
   'Personal Care',
