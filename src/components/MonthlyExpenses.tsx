@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PlusCircle, Trash2, ChevronLeft, ChevronRight, RefreshCw, Clock, AlertTriangle, TrendingDown, ChevronDown, CalendarDays } from 'lucide-react';
+import { PlusCircle, Trash2, ChevronLeft, ChevronRight, RefreshCw, Clock, AlertTriangle, TrendingDown, ChevronDown, CalendarDays, Search, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Expense, Product } from '../types';
 
@@ -139,58 +139,158 @@ function StyledProductDropdown({
   onChange: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
   const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  // Close when clicking outside
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) {
         setOpen(false);
+        setQuery('');
       }
     };
-
     document.addEventListener('mousedown', onPointerDown);
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, []);
 
-  const activeLabel = options.find(option => option.value === value)?.label ?? options[0]?.label ?? '';
+  // Focus input when dropdown opens
+  useEffect(() => {
+    if (open) {
+      inputRef.current?.focus();
+    }
+  }, [open]);
+
+  const selectedLabel = useMemo(() => {
+    if (!value) return '';
+    return options.find(o => o.value === value)?.label ?? '';
+  }, [value, options]);
+
+  // Filter out the placeholder option and apply search
+  const filteredOptions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return options.filter(o => {
+      if (!o.value) return false; // skip placeholder
+      if (!q) return true;
+      return o.label.toLowerCase().includes(q);
+    });
+  }, [options, query]);
+
+  const clearSelection = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange('');
+    setQuery('');
+  };
 
   return (
     <div ref={rootRef} className="relative mb-3">
+      {/* Trigger */}
       <button
         type="button"
-        onClick={() => setOpen(current => !current)}
-        className="w-full rounded-xl border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 pl-3 pr-9 py-2.5 bg-white text-sm text-left shadow-sm hover:border-slate-300 dark:hover:border-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/40 focus:border-amber-400 transition-colors"
+        onClick={() => { setOpen(prev => !prev); setQuery(''); }}
+        className={`w-full flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 bg-white dark:bg-slate-700 text-sm text-left transition-all ${
+          open
+            ? 'border-amber-400 ring-2 ring-amber-400/20 dark:border-amber-500'
+            : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
+        }`}
       >
-        <span className={`block truncate ${value ? 'text-slate-700 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'}`}>{activeLabel}</span>
-        <ChevronDown
-          size={16}
-          className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
-        />
+        <span className={`flex-1 truncate ${value ? 'text-slate-800 dark:text-slate-100 font-medium' : 'text-slate-400 dark:text-slate-500'}`}>
+          {value ? selectedLabel : 'Select a saved product…'}
+        </span>
+        <span className="flex items-center gap-1.5 flex-shrink-0">
+          {value && (
+            <span
+              onClick={clearSelection}
+              role="button"
+              tabIndex={0}
+              aria-label="Clear selection"
+              className="flex items-center justify-center w-5 h-5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 dark:hover:text-slate-200 transition-colors"
+            >
+              <X size={11} />
+            </span>
+          )}
+          <ChevronDown
+            size={15}
+            className={`text-slate-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          />
+        </span>
       </button>
 
+      {/* Dropdown panel */}
       {open && (
-        <div className="absolute z-20 mt-1.5 w-full max-h-64 overflow-auto rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-xl">
-          {options.map(option => (
-            <button
-              key={`${option.value || 'empty'}-${option.label}`}
-              type="button"
-              onClick={() => {
-                if (option.disabled) return;
-                onChange(option.value);
-                setOpen(false);
-              }}
-              disabled={option.disabled}
-              className={`w-full px-3 py-2.5 text-sm text-left transition-colors ${
-                option.disabled
-                  ? 'text-slate-400 dark:text-slate-500 cursor-not-allowed'
-                  : option.value === value
-                    ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-medium'
-                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600'
-              }`}
-            >
-              <span className="block truncate">{option.label}</span>
-            </button>
-          ))}
+        <div className="absolute z-30 mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-2xl overflow-hidden">
+          {/* Search bar */}
+          <div className="px-3 pt-3 pb-2">
+            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-400/20 transition-all">
+              <Search size={13} className="text-slate-400 flex-shrink-0" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search by name or price…"
+                className="flex-1 text-sm bg-transparent text-slate-700 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  className="flex items-center justify-center w-4 h-4 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  <X size={11} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Count hint */}
+          {!query && (
+            <p className="px-4 pb-1 text-[11px] text-slate-400 dark:text-slate-500">
+              {filteredOptions.length} product{filteredOptions.length !== 1 ? 's' : ''} available
+            </p>
+          )}
+
+          {/* Options */}
+          <div className="overflow-y-auto max-h-52 pb-1">
+            {filteredOptions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <Search size={20} className="text-slate-300 dark:text-slate-600 mb-2" />
+                <p className="text-sm text-slate-400 dark:text-slate-500">No products match &ldquo;{query}&rdquo;</p>
+              </div>
+            ) : (
+              <div className="px-1.5">
+                {filteredOptions.map(option => {
+                  const isSelected = option.value === value;
+                  // Split label into name + price for better visual hierarchy
+                  const parts = option.label.split(' — ');
+                  const productName = parts[0] ?? option.label;
+                  const productPrice = parts[1];
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => { onChange(option.value); setOpen(false); setQuery(''); }}
+                      className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm text-left transition-all mb-0.5 ${
+                        isSelected
+                          ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+                          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      <span className={`truncate font-medium ${isSelected ? 'text-amber-700 dark:text-amber-300' : 'text-slate-700 dark:text-slate-200'}`}>
+                        {productName}
+                      </span>
+                      {productPrice && (
+                        <span className={`flex-shrink-0 text-xs font-semibold ${isSelected ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                          {productPrice}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -374,6 +374,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [displayedProgress, setDisplayedProgress] = useState(0);
   const authBootstrapCompleteRef = useRef(false);
+  const currentUserRef = useRef<User | null>(null);
   const [copiedChecklist, setCopiedChecklist] = useState(false);
   const [isDark, toggleDark] = useDarkMode();
   const [schemaHealth, setSchemaHealth] = useState<SchemaHealthState>({
@@ -382,6 +383,7 @@ export default function App() {
   });
 
   const saveCurrentUser = useCallback((user: User | null) => {
+    currentUserRef.current = user;
     setCurrentUser(user);
   }, []);
 
@@ -434,11 +436,16 @@ export default function App() {
       } as User;
     }
 
+    // profile_picture_url can be null in DB even though typed as string;
+    // generate a deterministic fallback so the avatar is always shown.
+    const storedAvatar = (profile.profile_picture_url ?? '').trim();
+    const resolvedAvatar = storedAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name || derivedUsername)}&background=f59e0b&color=fff`;
+
     return {
       id: authUserId,
       name: profile.name,
       username: profile.username,
-      profilePictureUrl: profile.profile_picture_url,
+      profilePictureUrl: resolvedAvatar,
       email: fallbackEmail ?? `${profile.username}@nexora.app`,
       phone: profile.phone,
       bio: profile.bio,
@@ -699,6 +706,15 @@ export default function App() {
 
         clearGuestFallback();
         markSessionActivity();
+
+        // If bootstrap already resolved this exact user successfully, skip the
+        // redundant profile reload to prevent the auth event from overwriting
+        // a correctly loaded profile picture with a stale or fallback one.
+        if (authBootstrapCompleteRef.current && currentUserRef.current?.id === session.user.id) {
+          setAuthLoading(false);
+          return;
+        }
+
         try {
           const user = await loadCurrentUser(session.user.id, session.user.email);
           if (mounted) {

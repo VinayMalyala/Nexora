@@ -50,7 +50,8 @@ function Sidebar({
   const [avatarLoadError, setAvatarLoadError] = useState(false);
 
   const profileAvatarSrc = useMemo(() => {
-    const trimmed = currentUserProfilePictureUrl.trim();
+    // Guard against null/undefined arriving at runtime despite the string type.
+    const trimmed = (currentUserProfilePictureUrl ?? '').trim();
     if (!trimmed) return '';
     if (/^(https?:|data:|blob:)/i.test(trimmed)) return trimmed;
     if (trimmed.startsWith('//')) return `https:${trimmed}`;
